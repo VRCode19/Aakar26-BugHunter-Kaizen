@@ -6,6 +6,14 @@ const admin = require('firebase-admin');
 const axios = require('axios');
 const dotenv = require('dotenv');
 
+const cors = require('cors');
+
+// This tells Render: "It's okay to accept requests from my Vercel website"
+app.use(cors({
+  origin: "*", // During the event, "*" is easiest to avoid errors
+  methods: ["GET", "POST"]
+}));
+
 // 1. Initialize Configuration
 dotenv.config();
 
