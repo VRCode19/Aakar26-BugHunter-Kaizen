@@ -6,77 +6,143 @@ import './App.css'
 function App() {
   const [leaderboard, setLeaderboard] = useState([])
   const [statusMessage, setStatusMessage] = useState('')
+  const [teamName, setTeamName] = useState('')
+  const [password, setPassword] = useState('')
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [socket, setSocket] = useState(null)
 
+  // Initialize Socket.io connection
   useEffect(() => {
-    const socket = io('https://aakar26-bughunter-kaizen.onrender.com')
+    const newSocket = io('https://aakar26-bughunter-kaizen.onrender.com')
+    setSocket(newSocket)
 
-    socket.on('score_updated', () => {
+    newSocket.on('score_updated', () => {
       fetchLeaderboard()
-      setStatusMessage('Leaderboard updated from server')
+      setStatusMessage('Leaderboard updated!')
     })
 
-    socket.on('event_status_change', (data) => {
-      console.log('Event status changed:', data)
+    newSocket.on('team_joined', (data) => {
+      setStatusMessage(`${data.teamName} joined the game!`)
+      fetchLeaderboard()
     })
 
-    return () => {
-      socket.disconnect()
-    }
+    newSocket.on('event_status_change', (data) => {
+      console.log('Event status:', data)
+    })
+
+    return () => newSocket.disconnect()
   }, [])
 
-  const fetchLeaderboard = async () => {
-    try {
-      const response = await axios.get('https://aakar26-bughunter-kaizen.onrender.com/api/leaderboard')
-      setLeaderboard(response.data)
-      setStatusMessage('Leaderboard loaded successfully')
-    } catch (error) {
-      console.error('Error fetching leaderboard:', error)
-      setStatusMessage('Unable to load leaderboard')
-    }
-  }
-
-  const submitCode = async () => {
-    try {
-      const response = await axios.post('https://aakar26-bughunter-kaizen.onrender.com/api/submit', {
-        teamName: 'TestTeam',
-        questionId: 'q1',
-        submittedCode: 'printf("Hello World");'
-      })
-      setStatusMessage(response.data.message || 'Submission complete')
-      fetchLeaderboard()
-    } catch (error) {
-      console.error('Error submitting code:', error)
-      setStatusMessage('Submission failed')
-    }
-  }
-
+  // Fetch leaderboard on mount
   useEffect(() => {
     fetchLeaderboard()
   }, [])
 
+  const fetchLeaderboard = async () => {
+    try {
+      const response = await axios.get(
+        'https://aakar26-bughunter-kaizen.onrender.com/api/leaderboard'
+      )
+      if (response.data.success) {
+        setLeaderboard(response.data.leaderboard)
+        setStatusMessage('Leaderboard loaded')
+      }
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error)
+      setStatusMessage('Failed to load leaderboard')
+    }
+  }
+
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    
+    if (!teamName.trim() || !password.trim()) {
+      setStatusMessage('Please enter team name and password')
+      return
+    }
+
+    try {
+      const response = await axios.post(
+        'https://aakar26-bughunter-kaizen.onrender.com/api/login',
+        { teamName, password }
+      )
+      
+      if (response.data.success) {
+        setIsLoggedIn(true)
+        setStatusMessage(`Welcome ${response.data.team.name}!`)
+        fetchLeaderboard()
+      }
+    } catch (error) {
+      setStatusMessage(error.response?.data?.message || 'Login failed')
+    }
+  }
+
+  const handleSubmitCode = async () => {
+    try {
+      const response = await axios.post(
+        'https://aakar26-bughunter-kaizen.onrender.com/api/submit',
+        {
+          teamName,
+          questionId: 'q1',
+          submittedCode: '#include <stdio.h>\nint main() { printf("Hello World"); return 0; }'
+        }
+      )
+      setStatusMessage(response.data.message || 'Code submitted')
+      fetchLeaderboard()
+    } catch (error) {
+      setStatusMessage('Submission failed')
+    }
+  }
+
   return (
     <div className="app-container">
       <header>
-        <h1>BugHunter Frontend</h1>
-        <p>Connected to Render backend at aakar26-bughunter-kaizen.onrender.com</p>
+        <h1>🐛 BugHunter: Kaizen</h1>
+        <p>Connected to Render backend</p>
       </header>
 
-      <div className="actions">
-        <button onClick={submitCode}>Submit Test Code</button>
-        <button onClick={fetchLeaderboard}>Refresh Leaderboard</button>
-      </div>
+      {statusMessage && (
+        <div className="status-banner">{statusMessage}</div>
+      )}
 
-      {statusMessage && <div className="status-message">{statusMessage}</div>}
+      {!isLoggedIn ? (
+        <div className="login-section">
+          <h2>Team Login</h2>
+          <form onSubmit={handleLogin}>
+            <input
+              type="text"
+              placeholder="Team Name"
+              value={teamName}
+              onChange={(e) => setTeamName(e.target.value)}
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button type="submit">Login</button>
+          </form>
+        </div>
+      ) : (
+        <div className="game-section">
+          <h2>Welcome {teamName}</h2>
+          <button onClick={handleSubmitCode}>Submit Code</button>
+          <button onClick={fetchLeaderboard}>Refresh Leaderboard</button>
+        </div>
+      )}
 
-      <section className="leaderboard">
+      <section className="leaderboard-section">
         <h2>Leaderboard</h2>
         <ul>
           {leaderboard.length > 0 ? (
             leaderboard.map((team, index) => (
-              <li key={index}>{team.name}: {team.score} points</li>
+              <li key={index}>
+                #{index + 1} {team.name}: {team.score || 0} points
+              </li>
             ))
           ) : (
-            <li>No leaderboard data available</li>
+            <li>No teams logged in yet</li>
           )}
         </ul>
       </section>
