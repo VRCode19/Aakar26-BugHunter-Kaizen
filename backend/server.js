@@ -74,34 +74,50 @@ const questionBank = {
 
 // --- API ROUTES ---
 
-// Submit Code for Debugging
+// ---(PISTON API) ---
 app.post('/api/submit', async (req, res) => {
-  const { teamName, questionId, submittedCode, submittedOutput } = req.body;
-
-  // 1. Check if event is still active (Kill-switch check)
-  const settings = await db.collection('settings').doc('eventState').get();
-  if (!settings.data()?.isActive) {
-    return res.status(403).json({ message: "Event is closed by Admin!" });
-  }
-
+  const { teamName, questionId, submittedCode } = req.body;
   const question = questionBank[questionId];
 
-  // 2. Simple logic: If output matches exactly, they get points
-  if (submittedOutput.trim() === question.expectedOutput.trim()) {
-    const teamRef = db.collection('teams').doc(teamName);
-    
-    // Update score in Firestore
-    await teamRef.set({
-      score: admin.firestore.FieldValue.increment(question.points),
-      lastSubmission: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+  try {
+    // 1. Send code to Piston API (No key needed!)
+    const response = await axios.post('https://emkc.org/api/v2/piston/execute', {
+      language: 'c',
+      version: '10.2.0', // GCC version
+      files: [
+        {
+          content: submittedCode
+        }
+      ]
+    });
 
-    // 3. Broadcast new score to everyone for the real-time leaderboard
-    io.emit('score_updated', { teamName, newPoints: question.points });
+    const { run } = response.data;
+    const actualOutput = run.stdout.trim();
 
-    return res.json({ success: true, message: "Bug Fixed! +10 Points." });
-  } else {
-    return res.json({ success: false, message: "Output mismatch. Keep debugging!" });
+    // 2. Logic: Compare the output
+    if (actualOutput === question.expectedOutput.trim()) {
+      const teamRef = db.collection('teams').doc(teamName);
+      
+      await teamRef.set({
+        score: admin.firestore.FieldValue.increment(question.points),
+        solvedQuestions: admin.firestore.FieldValue.arrayUnion(questionId),
+        lastFixed: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      io.emit('score_updated', { teamName, points: question.points });
+      return res.json({ success: true, message: "Bug Fixed! Points updated." });
+    }
+
+    // 3. If failed, send back the error or the wrong output
+    res.json({ 
+      success: false, 
+      message: run.stderr ? "Compilation Error" : "Incorrect Output", 
+      error: run.stderr || `Got: ${actualOutput}` 
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Execution Server Busy. Try again!" });
   }
 });
 
@@ -119,4 +135,25 @@ app.post('/api/admin/toggle-event', async (req, res) => {
     return res.json({ success: true, message: `Event status: ${status}` });
   }
   res.status(401).send("Unauthorized");
+});
+
+//leaderboard route to fetch top teams
+
+app.get('/api/leaderboard', async (req, res) => {
+  try {
+    const teamsSnapshot = await db.collection('teams')
+      .orderBy('score', 'desc')
+      .orderBy('lastFixed', 'asc') // Tie-breaker: who solved it first?
+      .limit(50)
+      .get();
+
+    const leaderboard = [];
+    teamsSnapshot.forEach(doc => {
+      leaderboard.push({ name: doc.id, ...doc.data() });
+    });
+
+    res.json(leaderboard);
+  } catch (error) {
+    res.status(500).send("Error fetching leaderboard");
+  }
 });
