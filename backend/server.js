@@ -39,13 +39,14 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 
-// 5. Question Bank (Expand this to 10 questions before the event!)
+// 5. Question Bank (Edit these 10 questions before the event!)
 const questionBank = {
   "q1": {
     id: "q1",
     points: 10,
-    expectedOutput: "Hello World",
-    initialCode: "#include <stdio.h>\nint main() { printf(\"Hello World\"); return 0; }" 
+    testInput: "5",
+    expectedOutput: "1\n12\n123\n1234\n12345",
+    initialCode: `#include <stdio.h>\n\n/*\nInstruction:\nThis program is intentionally buggy.\nFind and fix the bug so it prints the correct number pattern.\n\nInput:\nOne positive integer n.\n\nExpected output for n = 5:\n1\n12\n123\n1234\n12345\n\nDebug task:\nCheck the inner loop condition carefully. The pattern is missing one value in each row.\n*/\n\nint main(void) {\n    int n, i, j;\n\n    scanf("%d", &n);\n\n    for (i = 1; i <= n; i++) {\n        for (j = 1; j < i; j++) {\n            printf("%d", j);\n        }\n        printf("\\n");\n    }\n\n    return 0;\n}`
   },
   "q2": {
     id: "q2",
@@ -54,6 +55,16 @@ const questionBank = {
     initialCode: "// Fix the loop to sum numbers 1 to 5\n#include <stdio.h>\nint main() { int s=0; for(int i=0; i<5; i++) s+=i; printf(\"%d\", s); return 0; }"
   }
 };
+
+// Auto-generate placeholders for q3 to q10. Overwrite these directly in the object above when you have the real questions!
+for(let i = 3; i <= 10; i++) {
+  questionBank[`q${i}`] = {
+    id: `q${i}`,
+    points: i * 10,
+    expectedOutput: `expected_output_${i}`, // The exact output piston should return
+    initialCode: `// Write starter code for q${i} here\n`
+  };
+}
 
 // 6. Submit Rate Limiter (Protects Piston API)
 const rateLimit = require('express-rate-limit');
@@ -106,7 +117,8 @@ app.post('/api/login', async (req, res) => {
         password: password, 
         score: 0,
         hasLoggedIn: true,
-        solvedQuestions: []
+        solvedQuestions: [],
+        lastFixed: admin.firestore.FieldValue.serverTimestamp()
       };
 
       // Save to Firebase
@@ -128,7 +140,11 @@ app.post('/api/login', async (req, res) => {
 
       if (teamData.password === password) {
         // Correct password
-        await teamRef.set({ hasLoggedIn: true }, { merge: true });
+        const updateData = { hasLoggedIn: true };
+        if (!teamData.lastFixed) {
+          updateData.lastFixed = admin.firestore.FieldValue.serverTimestamp();
+        }
+        await teamRef.set(updateData, { merge: true });
         io.emit('team_joined', { teamName: teamName, score: teamData.score || 0 });
         
         delete teamData.password;
@@ -206,11 +222,17 @@ app.post('/api/submit', async (req, res) => {
     }
 
     // Call Piston API
-    const pistonResponse = await axios.post('https://emkc.org/api/v2/piston/execute', {
+    const payload = {
       language: 'c',
       version: '*', 
       files: [{ name: "main.c", content: submittedCode }]
-    });
+    };
+    
+    if (question.testInput) {
+      payload.stdin = question.testInput;
+    }
+
+    const pistonResponse = await axios.post('https://emkc.org/api/v2/piston/execute', payload);
 
     const { run, compile } = pistonResponse.data;
 
