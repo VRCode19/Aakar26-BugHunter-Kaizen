@@ -94,65 +94,83 @@ app.get('/', (req, res) => {
 
 // Submit Route (SIMULATION MODE)
 // Note: Piston API is currently restricted, so we use simulation for testing.
+// Submit Route (Real Piston API Compiler)
 app.post('/api/submit', async (req, res) => {
   const { teamName, questionId, submittedCode } = req.body;
   
+  // 1. Validate the incoming request
   if (!teamName || !questionId || !submittedCode) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
   const question = questionBank[questionId];
-  if (!question) return res.status(404).json({ error: "Question not found" });
+  if (!question) {
+    return res.status(404).json({ error: "Question not found" });
+  }
 
   try {
-    // Check if the submitted code contains the correct output 
-    // (This acts as a placeholder until you have a working compiler API key)
-    if (submittedCode.includes(question.expectedOutput)) {
-      const teamRef = db.collection('teams').doc(teamName);
-      
-      await teamRef.set({
-        score: admin.firestore.FieldValue.increment(question.points),
-        solvedQuestions: admin.firestore.FieldValue.arrayUnion(questionId),
-        lastFixed: admin.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
+    // 2. Send the code to Piston API for C execution
+    const pistonResponse = await axios.post('https://emkc.org/api/v2/piston/execute', {
+      language: 'c',
+      version: '*', // This grabs the latest C compiler (GCC) available on Piston
+      files: [
+        {
+          name: "main.c",
+          content: submittedCode
+        }
+      ]
+    });
 
-      io.emit('score_updated', { teamName, points: question.points });
-      return res.json({ success: true, message: "Bug Fixed! Points updated." });
+    const { run, compile } = pistonResponse.data;
+
+    // 3. Check for Compilation Errors first
+    if (compile && compile.code !== 0) {
+      return res.json({ 
+        success: false, 
+        message: "Compilation Error", 
+        error: compile.stderr 
+      });
     }
 
-    res.json({ success: false, message: "Incorrect Output. Check your printf logic!" });
+    // 4. If it compiled, check the actual output
+    if (run && run.stdout !== undefined) {
+      // Trim removes extra hidden spaces or newlines that might cause a false failure
+      const actualOutput = run.stdout.trim(); 
+      const expectedOutput = question.expectedOutput.trim();
+
+      if (actualOutput === expectedOutput) {
+        // 🎉 BUG FIXED! Update Firebase Database
+        const teamRef = db.collection('teams').doc(teamName);
+        
+        await teamRef.set({
+          score: admin.firestore.FieldValue.increment(question.points),
+          solvedQuestions: admin.firestore.FieldValue.arrayUnion(questionId),
+          lastFixed: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        // Broadcast the update to all 50 teams instantly
+        io.emit('score_updated', { teamName, points: question.points });
+        
+        return res.json({ 
+          success: true, 
+          message: "Bug Fixed! Points updated." 
+        });
+      } else {
+        // ❌ INCORRECT OUTPUT
+        return res.json({ 
+          success: false, 
+          message: "Incorrect Output", 
+          error: `Expected: '${expectedOutput}', but got: '${actualOutput}'` 
+        });
+      }
+    }
+
+    // Fallback if Piston acts weird
+    res.status(500).json({ error: "Execution failed. No output returned." });
 
   } catch (error) {
-    console.error("Submission Error:", error);
-    res.status(500).json({ error: "Server Error. Try again!" });
-  }
-});
-
-app.post('/api/admin/toggle-event', async (req, res) => {
-  const { password, status } = req.body;
-  if (password === process.env.ADMIN_PASSWORD || password === "your_secret_admin_pass") {
-    await db.collection('settings').doc('eventState').set({ isActive: status });
-    io.emit('event_status_change', { isActive: status });
-    return res.json({ success: true, message: `Event status: ${status}` });
-  }
-  res.status(401).send("Unauthorized");
-});
-
-app.get('/api/leaderboard', async (req, res) => {
-  try {
-    const teamsSnapshot = await db.collection('teams')
-      .orderBy('score', 'desc')
-      .orderBy('lastFixed', 'asc')
-      .limit(50)
-      .get();
-
-    const leaderboard = [];
-    teamsSnapshot.forEach(doc => {
-      leaderboard.push({ name: doc.id, ...doc.data() });
-    });
-    res.json(leaderboard);
-  } catch (error) {
-    res.status(500).send("Error fetching leaderboard");
+    console.error("Piston API Error:", error.response ? error.response.data : error.message);
+    res.status(500).json({ error: "Compiler Server is currently busy. Try again in 5 seconds." });
   }
 });
 
