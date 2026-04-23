@@ -83,28 +83,73 @@ app.get('/', (req, res) => {
   res.send('BugHunter Backend is live on Render! 🔥');
 });
 
-// LOGIN ROUTE
+// AUTO-REGISTER & LOGIN ROUTE
 app.post('/api/login', async (req, res) => {
   const { teamName, password } = req.body;
-  if (!teamName || !password) return res.status(400).json({ success: false, message: "Missing fields" });
+
+  if (!teamName || !password) {
+    return res.status(400).json({ success: false, message: "Missing team name or password" });
+  }
+
+  // Optional: Sanitize team name (prevent super long names from breaking your UI)
+  if (teamName.length > 20) {
+    return res.status(400).json({ success: false, message: "Team name is too long! Keep it under 20 characters." });
+  }
 
   try {
     const teamRef = db.collection('teams').doc(teamName);
     const doc = await teamRef.get();
 
-    if (!doc.exists) return res.status(404).json({ success: false, message: "Team not found!" });
+    if (!doc.exists) {
+      // 🌟 NEW TEAM REGISTRATION 🌟
+      // The team doesn't exist yet, so let's create them!
+      const newTeamData = {
+        password: password, // Save their chosen password
+        score: 0,
+        hasLoggedIn: true,
+        solvedQuestions: []
+      };
 
-    const teamData = doc.data();
-    if (teamData.password === password) {
-      await teamRef.set({ hasLoggedIn: true }, { merge: true });
-      io.emit('team_joined', { teamName: doc.id, score: teamData.score || 0 });
-      delete teamData.password; 
-      return res.json({ success: true, message: "Welcome to BugHunter!", team: { name: doc.id, ...teamData } });
+      // Save to Firebase
+      await teamRef.set(newTeamData);
+
+      // Broadcast to the Leaderboard
+      io.emit('team_joined', { teamName: teamName, score: 0 });
+
+      delete newTeamData.password; // Don't send password back to browser
+      return res.json({ 
+        success: true, 
+        message: "New team registered and logged in!", 
+        team: { name: teamName, ...newTeamData } 
+      });
+
     } else {
-      return res.status(401).json({ success: false, message: "Incorrect password" });
+      // 🔄 EXISTING TEAM LOGIN 🔄
+      // The team name is already taken. Let's check if the password matches.
+      const teamData = doc.data();
+
+      if (teamData.password === password) {
+        // Correct password: let them back in
+        await teamRef.set({ hasLoggedIn: true }, { merge: true });
+        io.emit('team_joined', { teamName: teamName, score: teamData.score || 0 });
+        
+        delete teamData.password;
+        return res.json({ 
+          success: true, 
+          message: "Welcome back!", 
+          team: { name: teamName, ...teamData } 
+        });
+      } else {
+        // Wrong password (or someone trying to steal another team's name)
+        return res.status(401).json({ 
+          success: false, 
+          message: "Team name already taken, or incorrect password!" 
+        });
+      }
     }
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Login Error:", error);
+    res.status(500).json({ success: false, message: "Server error during login" });
   }
 });
 
