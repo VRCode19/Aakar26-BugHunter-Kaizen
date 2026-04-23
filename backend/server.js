@@ -65,6 +65,8 @@ const questionBank = {
   }
   // Add 10-15 more here...
 };
+
+
 //submit rate limiter
 const rateLimit = require('express-rate-limit');
 
@@ -92,8 +94,65 @@ app.get('/', (req, res) => {
   res.send('BugHunter Backend is live on Render! 🔥');
 });
 
-// Submit Route (SIMULATION MODE)
-// Note: Piston API is currently restricted, so we use simulation for testing.
+// Login Route
+app.post('/api/login', async (req, res) => {
+  const { teamName, password } = req.body;
+
+  if (!teamName || !password) return res.status(400).json({ success: false, message: "Missing fields" });
+
+  try {
+    const teamRef = db.collection('teams').doc(teamName);
+    const doc = await teamRef.get();
+
+    if (!doc.exists) return res.status(404).json({ success: false, message: "Team not found!" });
+
+    const teamData = doc.data();
+
+    if (teamData.password === password) {
+      
+      // 1. Mark them as active in Firebase
+      await teamRef.set({ hasLoggedIn: true }, { merge: true });
+
+      // 2. Tell the big screen a new team entered!
+      io.emit('team_joined', { teamName: doc.id, score: teamData.score || 0 });
+
+      delete teamData.password; // Don't send password to browser
+      return res.json({ success: true, message: "Welcome to BugHunter!", team: { name: doc.id, ...teamData } });
+    } else {
+      return res.status(401).json({ success: false, message: "Incorrect password" });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Leaderboard Route
+app.get('/api/leaderboard', async (req, res) => {
+  try {
+    const teamsSnapshot = await db.collection('teams')
+      .where('hasLoggedIn', '==', true) // <-- THIS IS THE MAGIC LINE
+      .orderBy('score', 'desc')
+      .orderBy('lastFixed', 'asc')
+      .limit(50)
+      .get();
+
+    const leaderboard = [];
+    teamsSnapshot.forEach(doc => {
+      const data = doc.data();
+      leaderboard.push({ 
+        name: doc.id, 
+        score: data.score || 0,
+        lastFixed: data.lastFixed ? data.lastFixed.toDate() : null
+      });
+    });
+
+    res.json({ success: true, leaderboard });
+  } catch (error) {
+    console.error("Leaderboard Error:", error);
+    res.status(500).json({ success: false, message: "Error fetching leaderboard" });
+  }
+});
+
 // Submit Route (Real Piston API Compiler)
 app.post('/api/submit', async (req, res) => {
   const { teamName, questionId, submittedCode } = req.body;
