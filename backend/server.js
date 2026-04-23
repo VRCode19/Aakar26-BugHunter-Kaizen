@@ -83,28 +83,71 @@ app.get('/', (req, res) => {
   res.send('BugHunter Backend is live on Render! 🔥');
 });
 
-// LOGIN ROUTE
+// AUTO-REGISTER & LOGIN ROUTE
 app.post('/api/login', async (req, res) => {
   const { teamName, password } = req.body;
-  if (!teamName || !password) return res.status(400).json({ success: false, message: "Missing fields" });
+
+  if (!teamName || !password) {
+    return res.status(400).json({ success: false, message: "Missing team name or password" });
+  }
+
+  // Optional: Sanitize team name (prevent super long names from breaking your UI)
+  if (teamName.length > 20) {
+    return res.status(400).json({ success: false, message: "Team name is too long! Keep it under 20 characters." });
+  }
 
   try {
     const teamRef = db.collection('teams').doc(teamName);
     const doc = await teamRef.get();
 
-    if (!doc.exists) return res.status(404).json({ success: false, message: "Team not found!" });
+    if (!doc.exists) {
+      // 🌟 NEW TEAM REGISTRATION 🌟
+      const newTeamData = {
+        password: password, 
+        score: 0,
+        hasLoggedIn: true,
+        solvedQuestions: []
+      };
 
-    const teamData = doc.data();
-    if (teamData.password === password) {
-      await teamRef.set({ hasLoggedIn: true }, { merge: true });
-      io.emit('team_joined', { teamName: doc.id, score: teamData.score || 0 });
-      delete teamData.password; 
-      return res.json({ success: true, message: "Welcome to BugHunter!", team: { name: doc.id, ...teamData } });
+      // Save to Firebase
+      await teamRef.set(newTeamData);
+
+      // Broadcast to the Leaderboard
+      io.emit('team_joined', { teamName: teamName, score: 0 });
+
+      delete newTeamData.password; 
+      return res.json({ 
+        success: true, 
+        message: "New team registered and logged in!", 
+        team: { name: teamName, ...newTeamData } 
+      });
+
     } else {
-      return res.status(401).json({ success: false, message: "Incorrect password" });
+      // 🔄 EXISTING TEAM LOGIN 🔄
+      const teamData = doc.data();
+
+      if (teamData.password === password) {
+        // Correct password
+        await teamRef.set({ hasLoggedIn: true }, { merge: true });
+        io.emit('team_joined', { teamName: teamName, score: teamData.score || 0 });
+        
+        delete teamData.password;
+        return res.json({ 
+          success: true, 
+          message: "Welcome back!", 
+          team: { name: teamName, ...teamData } 
+        });
+      } else {
+        // Wrong password
+        return res.status(401).json({ 
+          success: false, 
+          message: "Team name already taken, or incorrect password!" 
+        });
+      }
     }
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Login Error:", error);
+    res.status(500).json({ success: false, message: "Server error during login" });
   }
 });
 
@@ -130,6 +173,7 @@ app.get('/api/leaderboard', async (req, res) => {
 
     res.json({ success: true, leaderboard });
   } catch (error) {
+    console.error("Leaderboard Error:", error);
     res.status(500).json({ success: false, message: "Error fetching leaderboard" });
   }
 });
@@ -153,7 +197,7 @@ app.post('/api/submit', async (req, res) => {
     if (!teamDoc.exists) return res.status(404).json({ error: "Team not found" });
     const teamData = teamDoc.data();
 
-    // 🛑 ANTI-CHEAT: Did they already solve this?
+    // 🛑 ANTI-CHEAT
     if (teamData.solvedQuestions && teamData.solvedQuestions.includes(questionId)) {
       return res.json({ 
         success: false, 
@@ -170,12 +214,10 @@ app.post('/api/submit', async (req, res) => {
 
     const { run, compile } = pistonResponse.data;
 
-    // Check Compilation
     if (compile && compile.code !== 0) {
       return res.json({ success: false, message: "Compilation Error", error: compile.stderr });
     }
 
-    // Check Output
     if (run && run.stdout !== undefined) {
       const actualOutput = run.stdout.trim(); 
       const expectedOutput = question.expectedOutput.trim();
@@ -191,8 +233,7 @@ app.post('/api/submit', async (req, res) => {
 
         io.emit('score_updated', { teamName, points: question.points });
 
-        // 🏆 VICTORY CHECK: Did they just finish the 10th question?
-        // We check for 9, because this current successful submission makes it 10
+        // 🏆 VICTORY CHECK
         if (teamData.solvedQuestions && teamData.solvedQuestions.length === 9) {
            console.log(`🏆 ${teamName} HAS COMPLETED ALL 10 BUGS!`);
            io.emit('team_finished_all', { teamName: teamName });
