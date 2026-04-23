@@ -45,7 +45,7 @@ const questionBank = {
     id: "q1",
     points: 10,
     expectedOutput: "Hello World",
-    initialCode: "#include <stdio.h>\nint main() { printf(\"Hello Wordl\"); return 0; }" 
+    initialCode: "#include <stdio.h>\nint main() { printf(\"Hello World\"); return 0; }" 
   },
   "q2": {
     id: "q2",
