@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BugHunter | Team Portal</title>
+    <style>
+        body { font-family: 'Courier New', monospace; background: #0d0d0d; color: #00ff41; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { background: #1a1a1a; border: 1px solid #00ff41; padding: 30px; border-radius: 8px; width: 90%; max-width: 600px; box-shadow: 0 0 20px rgba(0, 255, 65, 0.2); }
+        h1 { text-align: center; text-transform: uppercase; letter-spacing: 3px; }
+        label { display: block; margin-bottom: 10px; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 12px; margin-bottom: 20px; background: #000; border: 1px solid #00ff41; color: #00ff41; border-radius: 4px; box-sizing: border-box; }
+        textarea { height: 150px; resize: none; font-family: 'Courier New', monospace; }
+        button { width: 100%; padding: 15px; background: #00ff41; color: #000; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
+        button:hover { background: #008f11; color: #fff; }
+        #response { margin-top: 20px; padding: 15px; border-radius: 4px; display: none; white-space: pre-wrap; }
+        .success { background: rgba(39, 174, 96, 0.2); border: 1px solid #27ae60; }
+        .error { background: rgba(192, 57, 43, 0.2); border: 1px solid #c0392b; color: #ff4d4d; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>-- BUG_HUNTER v1.0 --</h1>
+        
+        <label>TEAM ID</label>
+        <input type="text" id="teamName" placeholder="Enter Team Name...">
+
+        <label>SELECT BUG</label>
+        <select id="questionId">
+            <option value="q1">Q1: The Print Typo (10 pts)</option>
+            <option value="q2">Q2: Loop Logic (20 pts)</option>
+        </select>
+
+        <label>FIXED C CODE</label>
+        <textarea id="submittedCode" placeholder="#include <stdio.h>..."></textarea>
+
+        <button onclick="submitCode()">Execute Fix</button>
+
+        <div id="response"></div>
+    </div>
+
+    <script>
+        // CHANGE THIS TO YOUR RENDER URL
+        const API_BASE = "https://aakar26-bughunter-kaizen.onrender.com/api"; 
+
+        async function submitCode() {
+            const btn = document.querySelector('button');
+            const resDiv = document.getElementById('response');
+            
+            const payload = {
+                teamName: document.getElementById('teamName').value,
+                questionId: document.getElementById('questionId').value,
+                submittedCode: document.getElementById('submittedCode').value
+            };
+
+            if(!payload.teamName || !payload.submittedCode) {
+                alert("Please fill in Team Name and Code!");
+                return;
+            }
+
+            // UI Feedback
+            btn.innerText = "COMPILING...";
+            btn.disabled = true;
+            resDiv.style.display = "none";
+
+            try {
+                const response = await fetch(`${API_BASE}/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                resDiv.style.display = "block";
+                resDiv.className = data.success ? "success" : "error";
+                
+                if(data.success) {
+                    resDiv.innerText = `SUCCESS: ${data.message}`;
+                } else {
+                    resDiv.innerText = `FAILED: ${data.message}\n\nDEBUG LOG:\n${data.error || 'Check logic'}`;
+                }
+
+            } catch (err) {
+                resDiv.style.display = "block";
+                resDiv.className = "error";
+                resDiv.innerText = "SERVER OFFLINE: Make sure Render is awake!";
+            } finally {
+                btn.innerText = "Execute Fix";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
