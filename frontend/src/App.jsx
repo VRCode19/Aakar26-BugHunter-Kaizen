@@ -15,6 +15,45 @@ function formatCountdown(totalSeconds) {
   return `${hours}:${minutes}:${seconds}`
 }
 
+const QUESTIONS = {
+  "q1": {
+    id: "q1",
+    title: "Bug 1: Number Pattern",
+    text: `Instruction:
+This program is intentionally buggy.
+Find and fix the bug so it prints the correct number pattern.
+
+Input:
+One positive integer n.
+
+Expected output for n = 5:
+1
+12
+123
+1234
+12345
+
+Debug task:
+Check the inner loop condition carefully. The pattern is missing one value in each row.`,
+    starterCode: `#include <stdio.h>\n\n/*\nInstruction:\nThis program is intentionally buggy.\nFind and fix the bug so it prints the correct number pattern.\n\nInput:\nOne positive integer n.\n\nExpected output for n = 5:\n1\n12\n123\n1234\n12345\n\nDebug task:\nCheck the inner loop condition carefully. The pattern is missing one value in each row.\n*/\n\nint main(void) {\n    int n, i, j;\n\n    scanf("%d", &n);\n\n    for (i = 1; i <= n; i++) {\n        for (j = 1; j < i; j++) {\n            printf("%d", j);\n        }\n        printf("\\n");\n    }\n\n    return 0;\n}`,
+  },
+  "q2": {
+    id: "q2",
+    title: "Bug 2: Loop Sum",
+    text: "Question 2: Loop Sum\nFix the loop to sum numbers 1 to 5.",
+    starterCode: "// Fix the loop to sum numbers 1 to 5\n#include <stdio.h>\nint main() { int s=0; for(int i=0; i<5; i++) s+=i; printf(\"%d\", s); return 0; }",
+  }
+};
+// Auto-generate placeholders for q3 to q10
+for(let i = 3; i <= 10; i++) {
+  QUESTIONS[`q${i}`] = {
+    id: `q${i}`,
+    title: `Bug ${i}: Placeholder`,
+    text: `Question ${i}:\nPlaceholder prompt. Overwrite this in App.jsx when you have the real question.`,
+    starterCode: `// Placeholder starter code for Question ${i}\n`
+  };
+}
+
 function App() {
   const [loaderHidden, setLoaderHidden] = useState(false)
   const [mainShow, setMainShow] = useState(false)
@@ -27,12 +66,10 @@ function App() {
   const [buttonText, setButtonText] = useState('> Activate Sharingan')
   const [session, setSession] = useState(null)
   const [timeLeft, setTimeLeft] = useState(DEFAULT_DURATION_MINUTES * 60)
-  const [questionText, setQuestionText] = useState(
-    'Question statement will be added here by your team. Keep this area reserved for the official debugging prompt.',
-  )
-  const [starterCode, setStarterCode] = useState(
-    '#include <stdio.h>\n\nint main(void) {\n    // Official debugging code will be added here.\n    return 0;\n}\n',
-  )
+  
+  const [currentQuestionId, setCurrentQuestionId] = useState('q1')
+  const [editedCode, setEditedCode] = useState(QUESTIONS['q1'].starterCode)
+  
   const [consoleOutput, setConsoleOutput] = useState(
     'Compiler panel reserved. Connect this to backend later.',
   )
@@ -247,8 +284,8 @@ function App() {
     try {
       const response = await axios.post(`${BACKEND_URL}/api/submit`, {
         teamName: session.id,
-        questionId: 'q1', // Hardcoded for demo/q1
-        submittedCode: starterCode
+        questionId: currentQuestionId, // Use currently selected question
+        submittedCode: editedCode
       })
 
       if (response.data.success) {
@@ -260,6 +297,13 @@ function App() {
     } catch (error) {
       setConsoleOutput(error.response?.data?.error || 'Submission failed')
     }
+  }
+
+  const handleQuestionChange = (e) => {
+    const newId = e.target.value
+    setCurrentQuestionId(newId)
+    setEditedCode(QUESTIONS[newId].starterCode)
+    setConsoleOutput('Compiler panel reserved. Submit code to see output.')
   }
 
   const particles = [
@@ -422,11 +466,22 @@ function App() {
             <div className="main-grid">
               <div className="workspace-column">
                 <section className="panel question-panel">
-                  <div className="section-title">Question</div>
+                  <div className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Question</span>
+                    <select 
+                      value={currentQuestionId} 
+                      onChange={handleQuestionChange}
+                      style={{ background: '#111', color: '#ea1717', border: '1px solid #7d1717', padding: '4px', fontFamily: 'monospace', outline: 'none' }}
+                    >
+                      {Object.values(QUESTIONS).map(q => (
+                        <option key={q.id} value={q.id}>{q.title}</option>
+                      ))}
+                    </select>
+                  </div>
                   <textarea
                     className="question-area"
-                    value={questionText}
-                    onChange={(event) => setQuestionText(event.target.value)}
+                    value={QUESTIONS[currentQuestionId].text}
+                    readOnly
                     spellCheck="false"
                   />
                 </section>
@@ -435,8 +490,8 @@ function App() {
                   <div className="section-title">Code Editor</div>
                   <textarea
                     className="code-editor"
-                    value={starterCode}
-                    onChange={(event) => setStarterCode(event.target.value)}
+                    value={editedCode}
+                    onChange={(event) => setEditedCode(event.target.value)}
                     spellCheck="false"
                   />
                   <div className="editor-actions">
