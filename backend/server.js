@@ -3,9 +3,11 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const admin = require('firebase-admin');
+const axios = require('axios'); // ADDED THIS: Necessary for Piston API
+const dotenv = require('dotenv');
 
-// 1. Initialize Firebase Admin
-// This points to the secret JSON file you just downloaded
+// 1. Initialize Configuration
+dotenv.config();
 const serviceAccount = require('./firebaseServiceAccount.json');
 
 admin.initializeApp({
@@ -15,11 +17,22 @@ admin.initializeApp({
 const db = admin.firestore();
 console.log('🔥 Firebase securely connected!');
 
-// 2. Server & Socket Setup
+// 2. Setup Middleware (Order is critical!)
 const app = express();
 app.use(cors()); 
-app.use(express.json());
+app.use(express.json()); // This allows the server to read your JSON requests
 
+// 3. Question Bank (Define this before the routes use it)
+const questionBank = {
+  "q1": {
+    id: "q1",
+    points: 10,
+    expectedOutput: "Hello World",
+    initialCode: "#include <stdio.h>\nint main() { printf(\"Hello Wordl\"); return 0; }" 
+  }
+};
+
+// 4. Server & Socket Initialization
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -28,122 +41,86 @@ const io = new Server(server, {
   }
 });
 
-// 3. API Routes
+// 5. API ROUTES
+
+// Root Check
 app.get('/', (req, res) => {
   res.send('BugHunter Backend is live with Firebase! 🔥');
 });
 
-// Example route: Check Firebase connection by adding a test document
-app.post('/api/test-db', async (req, res) => {
-  try {
-    const docRef = await db.collection('test').add({
-      message: 'Hello from Node.js!',
-      timestamp: admin.firestore.FieldValue.serverTimestamp()
-    });
-    res.json({ success: true, docId: docRef.id });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// 4. WebSockets (Real-time)
-io.on('connection', (socket) => {
-  console.log(`New connection: ${socket.id}`);
-  socket.on('disconnect', () => {
-    console.log(`Disconnected: ${socket.id}`);
-  });
-});
-
-// 5. Start Up
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-});
-
-
-// --- QUESTION BANK (Placeholders) ---
-const questionBank = {
-  "q1": {
-    id: "q1",
-    points: 10,
-    expectedOutput: "Hello World",
-    initialCode: "#include <stdio.h>\nint main() {\n  printf(\"Hello Wordl\"); // BUG: Typo here\n  return 0;\n}"
-  },
-  // ... you will add 9 more here
-};
-
-// --- API ROUTES ---
-
-// ---(PISTON API) ---
+// Submit Route (Piston API)
 app.post('/api/submit', async (req, res) => {
   const { teamName, questionId, submittedCode } = req.body;
+  
+  if (!teamName || !questionId || !submittedCode) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
   const question = questionBank[questionId];
 
   try {
-    // 1. Send code to Piston API (No key needed!)
     const response = await axios.post('https://emkc.org/api/v2/piston/execute', {
       language: 'c',
-      version: '10.2.0', // GCC version
-      files: [
-        {
-          content: submittedCode
-        }
-      ]
+      version: '*', // Use '*' to grab whatever stable GCC version they have
+      files: [{ content: submittedCode }]
+    }, {
+      // Adding a User-Agent header sometimes bypasses 401 blocks on public APIs
+      headers: {
+        'User-Agent': 'BugHunter-App-VTU' 
+      }
     });
 
     const { run } = response.data;
-    const actualOutput = run.stdout.trim();
 
-    // 2. Logic: Compare the output
-    if (actualOutput === question.expectedOutput.trim()) {
-      const teamRef = db.collection('teams').doc(teamName);
-      
-      await teamRef.set({
-        score: admin.firestore.FieldValue.increment(question.points),
-        solvedQuestions: admin.firestore.FieldValue.arrayUnion(questionId),
-        lastFixed: admin.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
+    // Check if Piston actually executed the code
+    if (run.stdout !== undefined) {
+      const actualOutput = run.stdout.trim();
 
-      io.emit('score_updated', { teamName, points: question.points });
-      return res.json({ success: true, message: "Bug Fixed! Points updated." });
+      if (actualOutput === question.expectedOutput.trim()) {
+        const teamRef = db.collection('teams').doc(teamName);
+        await teamRef.set({
+          score: admin.firestore.FieldValue.increment(question.points),
+          solvedQuestions: admin.firestore.FieldValue.arrayUnion(questionId),
+          lastFixed: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        io.emit('score_updated', { teamName, points: question.points });
+        return res.json({ success: true, message: "Bug Fixed! Points updated." });
+      }
+
+      return res.json({ 
+        success: false, 
+        message: run.stderr ? "Compilation Error" : "Incorrect Output", 
+        error: run.stderr || `Got: ${actualOutput}` 
+      });
     }
 
-    // 3. If failed, send back the error or the wrong output
-    res.json({ 
-      success: false, 
-      message: run.stderr ? "Compilation Error" : "Incorrect Output", 
-      error: run.stderr || `Got: ${actualOutput}` 
-    });
+    res.status(500).json({ error: "Piston execution failed" });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Execution Server Busy. Try again!" });
+    // This will help us see the EXACT reason for the 401
+    console.error("Piston Details:", error.response ? error.response.data : error.message);
+    res.status(500).json({ error: "Compiler API Error. Check console." });
   }
 });
 
-//Kill switch for Admin to end the event
-
+// Admin Kill Switch
 app.post('/api/admin/toggle-event', async (req, res) => {
   const { password, status } = req.body;
-  
-  if (password === "your_secret_admin_pass") { // Use a real pass later
+  if (password === "your_secret_admin_pass") {
     await db.collection('settings').doc('eventState').set({ isActive: status });
-    
-    // Tell all connected teams to lock/unlock
     io.emit('event_status_change', { isActive: status });
-    
     return res.json({ success: true, message: `Event status: ${status}` });
   }
   res.status(401).send("Unauthorized");
 });
 
-//leaderboard route to fetch top teams
-
+// Leaderboard Route
 app.get('/api/leaderboard', async (req, res) => {
   try {
     const teamsSnapshot = await db.collection('teams')
       .orderBy('score', 'desc')
-      .orderBy('lastFixed', 'asc') // Tie-breaker: who solved it first?
+      .orderBy('lastFixed', 'asc')
       .limit(50)
       .get();
 
@@ -151,9 +128,22 @@ app.get('/api/leaderboard', async (req, res) => {
     teamsSnapshot.forEach(doc => {
       leaderboard.push({ name: doc.id, ...doc.data() });
     });
-
     res.json(leaderboard);
   } catch (error) {
     res.status(500).send("Error fetching leaderboard");
   }
+});
+
+// 6. WebSocket Connection Logic
+io.on('connection', (socket) => {
+  console.log(`New connection: ${socket.id}`);
+  socket.on('disconnect', () => {
+    console.log(`Disconnected: ${socket.id}`);
+  });
+});
+
+// 7. Start Server
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
