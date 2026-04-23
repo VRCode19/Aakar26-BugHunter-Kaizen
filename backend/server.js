@@ -49,15 +49,33 @@ const app = express();
 app.use(cors()); 
 app.use(express.json());
 
-// 3. Question Bank
+// question bank 
 const questionBank = {
   "q1": {
     id: "q1",
     points: 10,
     expectedOutput: "Hello World",
     initialCode: "#include <stdio.h>\nint main() { printf(\"Hello Wordl\"); return 0; }" 
+  },
+  "q2": {
+    id: "q2",
+    points: 20,
+    expectedOutput: "15",
+    initialCode: "// Fix the loop to sum numbers 1 to 5\n#include <stdio.h>\nint main() { int s=0; for(int i=0; i<5; i++) s+=i; printf(\"%d\", s); return 0; }"
   }
+  // Add 10-15 more here...
 };
+//submit rate limiter
+const rateLimit = require('express-rate-limit');
+
+const submitLimiter = rateLimit({
+  windowMs: 5 * 1000, // 5 seconds
+  max: 1, // Limit each IP to 1 submission per window
+  message: { error: "Wait 5 seconds between attempts!" }
+});
+
+app.use('/api/submit', submitLimiter);
+
 
 // 4. Server & Socket Initialization
 const server = http.createServer(app);
