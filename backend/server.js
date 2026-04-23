@@ -6,23 +6,22 @@ const admin = require('firebase-admin');
 const axios = require('axios');
 const dotenv = require('dotenv');
 
-const cors = require('cors');
-
-// This tells Render: "It's okay to accept requests from my Vercel website"
-app.use(cors({
-  origin: "*", // During the event, "*" is easiest to avoid errors
-  methods: ["GET", "POST"]
-}));
-
 // 1. Initialize Configuration
 dotenv.config();
 
-/** * RENDER NOTE: 
- * We are checking for a local file first (Secret File approach), 
- * and falling back to the Env Var string (Vercel style) just in case.
- */
-let serviceAccount;
+// 2. Initialize Express App (Must happen BEFORE app.use)
+const app = express();
 
+// 3. Setup Middleware
+// This tells Render: "It's okay to accept requests from my Vercel website"
+app.use(cors({
+  origin: "*", 
+  methods: ["GET", "POST"]
+}));
+app.use(express.json());
+
+// 4. Firebase Setup
+let serviceAccount;
 try {
   // Option A: Render Secret File (Preferred)
   serviceAccount = require('./firebaseServiceAccount.json');
@@ -34,22 +33,16 @@ try {
     console.log('🔥 Firebase connected via Env Var string!');
   } else {
     console.error("❌ ERROR: No Firebase credentials found! Add firebaseServiceAccount.json to Render Secret Files.");
-    process.exit(1); // Stop the server if DB can't connect
+    process.exit(1); 
   }
 }
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
-
 const db = admin.firestore();
 
-// 2. Setup Middleware
-const app = express();
-app.use(cors()); 
-app.use(express.json());
-
-// question bank 
+// 5. Question Bank
 const questionBank = {
   "q1": {
     id: "q1",
