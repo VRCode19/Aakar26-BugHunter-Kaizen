@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: aakar26-bughunter-kaizen
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist

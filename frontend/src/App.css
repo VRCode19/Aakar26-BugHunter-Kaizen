@@ -346,54 +346,6 @@ body::after {
   animation: spinCW 7s linear infinite;
 }
 
-.card-title {
-  font-size: clamp(0.82rem, 2.5vw, 1rem);
-  font-weight: 700;
-  letter-spacing: 0.3em;
-  color: #770000;
-  text-transform: uppercase;
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.field {
-  margin-bottom: 20px;
-}
-
-.field label {
-  display: block;
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 0.66rem;
-  letter-spacing: 0.22em;
-  color: #4a0000;
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
-
-.field input {
-  width: 100%;
-  background: #060000;
-  border: 1px solid #220000;
-  border-bottom-color: #4a0000;
-  color: #dd4444;
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 0.9rem;
-  letter-spacing: 0.06em;
-  padding: 12px 14px;
-  outline: none;
-  transition: border-color 0.25s, box-shadow 0.25s;
-  caret-color: #ff0000;
-}
-
-.field input::placeholder {
-  color: #260000;
-}
-
-.field input:focus {
-  border-color: #660000;
-  box-shadow: 0 0 0 1px #2a0000, 0 0 16px rgba(100, 0, 0, 0.35);
-}
-
 .login-btn {
   width: 100%;
   margin-top: 8px;
@@ -440,22 +392,6 @@ body::after {
   transform: scale(0.98);
 }
 
-.login-err {
-  margin-top: 14px;
-  text-align: center;
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 0.66rem;
-  letter-spacing: 0.15em;
-  color: #990000;
-  opacity: 0;
-  transition: opacity 0.3s;
-  min-height: 18px;
-}
-
-.login-err.show {
-  opacity: 1;
-}
-
 .card-footer {
   margin-top: 26px;
   text-align: center;
@@ -476,10 +412,7 @@ body::after {
 
   .college-tag,
   .event-tagline,
-  .card-title,
   .card-footer,
-  .field label,
-  .login-err,
   .login-btn {
     letter-spacing: 0.12em;
   }
