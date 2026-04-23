@@ -3,6 +3,8 @@ import io from 'socket.io-client'
 import axios from 'axios'
 import './App.css'
 
+const BACKEND_URL = import.meta.env.DEV ? 'http://localhost:5000' : 'https://aakar26-bughunter-kaizen.onrender.com'
+
 function App() {
   const [leaderboard, setLeaderboard] = useState([])
   const [statusMessage, setStatusMessage] = useState('')
@@ -13,7 +15,7 @@ function App() {
 
   // Initialize Socket.io connection
   useEffect(() => {
-    const newSocket = io('https://aakar26-bughunter-kaizen.onrender.com')
+    const newSocket = io(BACKEND_URL)
     setSocket(newSocket)
 
     newSocket.on('score_updated', () => {
@@ -41,7 +43,7 @@ function App() {
   const fetchLeaderboard = async () => {
     try {
       const response = await axios.get(
-        'https://aakar26-bughunter-kaizen.onrender.com/api/leaderboard'
+        `${BACKEND_URL}/api/leaderboard`
       )
       if (response.data.success) {
         setLeaderboard(response.data.leaderboard)
@@ -63,7 +65,7 @@ function App() {
 
     try {
       const response = await axios.post(
-        'https://aakar26-bughunter-kaizen.onrender.com/api/login',
+        `${BACKEND_URL}/api/login`,
         { teamName, password }
       )
       
@@ -80,7 +82,7 @@ function App() {
   const handleSubmitCode = async () => {
     try {
       const response = await axios.post(
-        'https://aakar26-bughunter-kaizen.onrender.com/api/submit',
+        `${BACKEND_URL}/api/submit`,
         {
           teamName,
           questionId: 'q1',
