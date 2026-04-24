@@ -51,20 +51,67 @@ const questionBank = {
   "q2": {
     id: "q2",
     points: 20,
-    expectedOutput: "15",
-    initialCode: "// Fix the loop to sum numbers 1 to 5\n#include <stdio.h>\nint main() { int s=0; for(int i=0; i<5; i++) s+=i; printf(\"%d\", s); return 0; }"
+    testInput: "10 20",
+    expectedOutput: "Before swap: a = 10, b = 20\nAfter swap: a = 20, b = 10",
+    initialCode: `#include <stdio.h>\n\n/*\nInstruction:\nThis program is intentionally buggy.\nFind and fix the bug so it correctly swaps two numbers using pointers.\n\nInput:\nTwo integers a and b.\n\nExpected output for input: 10 20\nBefore swap: a = 10, b = 20\nAfter swap: a = 20, b = 10\n\nDebug task:\nThe swap function uses pointers, but values are not changing in main.\nCheck whether pointer addresses are being swapped or actual values are being swapped.\n*/\n\nvoid swap(int *a, int *b) {\n    int *temp = a;\n    a = b;\n    b = temp;\n}\n\nint main(void) {\n    int a, b;\n\n    scanf("%d %d", &a, &b);\n\n    printf("Before swap: a = %d, b = %d\\n", a, b);\n    swap(&a, &b);\n    printf("After swap: a = %d, b = %d\\n", a, b);\n\n    return 0;\n}`
+  },
+  "q3": {
+    id: "q3",
+    points: 30,
+    testInput: "hello",
+    expectedOutput: "Uppercase: HELLO\nASCII values:\nH -> 72\nE -> 69\nL -> 76\nL -> 76\nO -> 79",
+    initialCode: `#include <stdio.h>\n\n/*\nInstruction:\nThis program is intentionally buggy.\nFind and fix the bug so it converts a lowercase string to uppercase using ASCII values.\nThen print each character with its ASCII value.\n\nInput:\nA single lowercase word (no spaces), for example: hello\n\nExpected output for input: hello\nUppercase: HELLO\nASCII values:\nH -> 72\nE -> 69\nL -> 76\nL -> 76\nO -> 79\n\nDebug task:\nThe conversion logic is wrong. Check the ASCII operation used for lowercase letters.\n*/\n\nint main(void) {\n    char s[100];\n    int i;\n\n    scanf("%99s", s);\n\n    for (i = 0; s[i] != '\\0'; i++) {\n        if (s[i] >= 'a' && s[i] <= 'z') {\n            s[i] = s[i] + 32;\n        }\n    }\n\n    printf("Uppercase: %s\\n", s);\n    printf("ASCII values:\\n");\n\n    for (i = 0; s[i] != '\\0'; i++) {\n        printf("%c -> %d\\n", s[i], (int)s[i]);\n    }\n\n    return 0;\n}`
+  },
+  "q4": {
+    id: "q4",
+    points: 40,
+    testInput: "10",
+    expectedOutput: "n & 1 = 0\nn << 1 = 20\nn >> 1 = 5\nHex of n = 0xA",
+    initialCode: `#include <stdio.h>\n\n/*\nInstruction:\nThis program is intentionally buggy.\nFind and fix the bug so it correctly uses bitwise operators and format specifiers.\n\nInput:\nOne integer n.\n\nExpected output for input: 10\nn & 1 = 0\nn << 1 = 20\nn >> 1 = 5\nHex of n = 0xA\n\nDebug task:\n1) One expression uses a logical operator instead of a bitwise operator.\n2) The hex output line uses the wrong format specifier.\n*/\n\nint main(void) {\n    int n;\n\n    scanf("%d", &n);\n\n    int odd_bit = n && 1;\n\n    printf("n & 1 = %d\\n", odd_bit);\n    printf("n << 1 = %d\\n", n << 1);\n    printf("n >> 1 = %d\\n", n >> 1);\n    printf("Hex of n = 0x%d\\n", n);\n\n    return 0;\n}`
+  },
+  "q5": {
+    id: "q5",
+    points: 50,
+    testInput: "101 Ravi 88.5",
+    expectedOutput: "Roll: 101\nName: Ravi\nMarks: 88.50",
+    initialCode: `#include <stdio.h>\n\n/*\nInstruction:\nThis program is intentionally buggy.\nFind and fix the bug so it correctly uses typedef with a structure and prints student data.\n\nInput:\nOne student record in this format:\nroll name marks\nExample: 101 Ravi 88.5\n\nExpected output for input: 101 Ravi 88.5\nRoll: 101\nName: Ravi\nMarks: 88.50\n\nDebug task:\n1) Check whether typedef name and structure usage match.\n2) Check the format specifier used to print marks.\n*/\n\ntypedef struct {\n    int roll;\n    char name[50];\n    float marks;\n} Student;\n\nint main(void) {\n    struct Student s;\n\n    scanf("%d %49s %f", &s.roll, s.name, &s.marks);\n\n    printf("Roll: %d\\n", s.roll);\n    printf("Name: %s\\n", s.name);\n    printf("Marks: %d\\n", s.marks);\n\n    return 0;\n}`
+  },
+  "q6": {
+    id: "q6",
+    points: 60,
+    testInput: "5",
+    expectedOutput: "Factorial of 5 is 120",
+    initialCode: `#include <stdio.h>\n\n/*\nInstruction:\nThis program is intentionally buggy.\nFind and fix the bug so it correctly calculates factorial using recursion.\n\nInput:\nOne non-negative integer n.\n\nExpected output for input: 5\nFactorial of 5 is 120\n\nDebug task:\n1) Check the recursive step carefully.\n2) Make sure the base case works correctly.\n*/\n\nint factorial(int n) {\n    return n + factorial(n - 1);\n}\n\nint main(void) {\n    int n;\n\n    scanf("%d", &n);\n\n    printf("Factorial of %d is %d\\n", n, factorial(n));\n\n    return 0;\n}`
+  },
+  "q7": {
+    id: "q7",
+    points: 70,
+    testInput: "dcba",
+    expectedOutput: "Sorted string: abcd",
+    initialCode: `#include <stdio.h>\n#include <string.h>\n\n/*\nInstruction:\nThis program is intentionally buggy.\nFind and fix the bug so it sorts characters of a string in ascending order\nusing selection sort.\n\nInput:\nA single word (no spaces), for example: dcba\n\nExpected output for input: dcba\nSorted string: abcd\n\nDebug task:\nThe selection logic is wrong for ascending order.\nCheck the comparison used while finding the minimum character.\n*/\n\nint main(void) {\n    char s[100];\n    int i, j, min_idx, n;\n    char temp;\n\n    scanf("%99s", s);\n    n = (int)strlen(s);\n\n    for (i = 0; i < n - 1; i++) {\n        min_idx = i;\n\n        for (j = i + 1; j < n; j++) {\n            if (s[j] > s[min_idx]) {\n                min_idx = j;\n            }\n        }\n\n        temp = s[i];\n        s[i] = s[min_idx];\n        s[min_idx] = temp;\n    }\n\n    printf("Sorted string: %s\\n", s);\n\n    return 0;\n}`
+  },
+  "q8": {
+    id: "q8",
+    points: 80,
+    testInput: "25",
+    expectedOutput: "You entered: 25\nSquare: 625",
+    initialCode: `#include <stdio.h>\n\n/*\nInstruction:\nThis program is intentionally buggy.\nFind and fix the boilerplate and printf/scanf issues.\n\nInput:\nOne integer number.\n\nExpected output for input: 25\nYou entered: 25\nSquare: 625\n\nDebug task:\n1) Check scanf usage.\n2) Check printf format specifiers.\n3) Keep proper C boilerplate structure.\n*/\n\nint main(void) {\n    int n;\n\n    scanf("%d", n);\n\n    printf("You entered: %f\\n"+ n);\n    printf("Square: %d\\n", n * n);\n\n    return 0;\n}`
+  },
+  "q9": {
+    id: "q9",
+    points: 90,
+    testInput: "5",
+    expectedOutput: "1 is Odd\n2 is Even\n3 is Odd\n4 is Even\n5 is Odd",
+    initialCode: `#include <stdio.h>\n\n/*\nInstruction:\nThis program is intentionally buggy.\nFind and fix the if-else and loop issues.\n\nInput:\nOne positive integer n.\n\nExpected output for input: 5\n1 is Odd\n2 is Even\n3 is Odd\n4 is Even\n5 is Odd\n\nDebug task:\n1) Check the loop range.\n2) Check the if-else condition for even/odd.\n*/\n\nint main(void) {\n    int n, i;\n\n    scanf("%d", &n);\n\n    for (i = 1; i < n; i++) {\n        if (i % 2 == 1) {\n            printf("%d is Even\\n", i);\n        } else {\n            printf("%d is Odd\\n", i);\n        }\n    }\n\n    return 0;\n}`
+  },
+  "q10": {
+    id: "q10",
+    points: 100,
+    testInput: "42",
+    expectedOutput: "Value read from file: 42",
+    initialCode: `#include <stdio.h>\n\n/*\nInstruction:\nThis program is intentionally buggy.\nFind and fix the bug so it writes a number to a file and reads it back.\n\nInput:\nOne integer n.\n\nExpected output for input: 42\nValue read from file: 42\n\nDebug task:\n1) Check the file open mode used for writing.\n2) Ensure data is written correctly before reading.\n*/\n\nint main(void) {\n    int n, value;\n    FILE *fp;\n\n    scanf("%d", &n);\n\n    fp = fopen("number.txt", "r");\n    if (fp == NULL) {\n        printf("File open error\\n");\n        return 1;\n    }\n\n    fprintf(fp, "%d", n);\n    fclose(fp);\n\n    fp = fopen("number.txt", "r");\n    if (fp == NULL) {\n        printf("File open error\\n");\n        return 1;\n    }\n\n    fscanf(fp, "%d", &value);\n    fclose(fp);\n\n    printf("Value read from file: %d\\n", value);\n\n    return 0;\n}`
   }
 };
-
-// Auto-generate placeholders for q3 to q10. Overwrite these directly in the object above when you have the real questions!
-for(let i = 3; i <= 10; i++) {
-  questionBank[`q${i}`] = {
-    id: `q${i}`,
-    points: i * 10,
-    expectedOutput: `expected_output_${i}`, // The exact output piston should return
-    initialCode: `// Write starter code for q${i} here\n`
-  };
-}
 
 // 6. Submit Rate Limiter
 const rateLimit = require('express-rate-limit');
@@ -335,7 +382,15 @@ app.post('/api/submit', async (req, res) => {
         const codeClean = submittedCode.replace(/\s+/g, '');
         let isRegexCorrect = false;
         if (questionId === 'q1' && codeClean.includes('j<=i')) isRegexCorrect = true;
-        else if (questionId === 'q2' && (codeClean.includes('i<=5') || codeClean.includes('s+=i;s+=5'))) isRegexCorrect = true;
+        else if (questionId === 'q2' && codeClean.includes('*a=*b')) isRegexCorrect = true;
+        else if (questionId === 'q3' && codeClean.includes('s[i]-32')) isRegexCorrect = true;
+        else if (questionId === 'q4' && codeClean.includes('%X')) isRegexCorrect = true;
+        else if (questionId === 'q5' && codeClean.includes('Students;')) isRegexCorrect = true;
+        else if (questionId === 'q6' && codeClean.includes('n*factorial')) isRegexCorrect = true;
+        else if (questionId === 'q7' && codeClean.includes('s[j]<s[min_idx]')) isRegexCorrect = true;
+        else if (questionId === 'q8' && codeClean.includes('&n')) isRegexCorrect = true;
+        else if (questionId === 'q9' && codeClean.includes('i<=n')) isRegexCorrect = true;
+        else if (questionId === 'q10' && codeClean.includes('"w"')) isRegexCorrect = true;
         
         if (isRegexCorrect) {
           actualOutput = question.expectedOutput.trim();

@@ -37,6 +37,25 @@ Debug task:
 Check the inner loop condition carefully. The pattern is missing one value in each row.`,
     starterCode: `#include <stdio.h>
 
+/*
+Instruction:
+This program is intentionally buggy.
+Find and fix the bug so it prints the correct number pattern.
+
+Input:
+One positive integer n.
+
+Expected output for n = 5:
+1
+12
+123
+1234
+12345
+
+Debug task:
+Check the inner loop condition carefully. The pattern is missing one value in each row.
+*/
+
 int main(void) {
     int n, i, j;
 
@@ -54,20 +73,524 @@ int main(void) {
   },
   "q2": {
     id: "q2",
-    title: "Bug 2: Loop Sum",
-    text: "Question 2: Loop Sum\nFix the loop to sum numbers 1 to 5.",
-    starterCode: `#include <stdio.h>\nint main() { int s=0; for(int i=0; i<5; i++) s+=i; printf("%d", s); return 0; }`,
+    title: "Bug 2: Pointer Swap",
+    text: `Instruction:
+This program is intentionally buggy.
+Find and fix the bug so it correctly swaps two numbers using pointers.
+
+Input:
+Two integers a and b.
+
+Expected output for input: 10 20
+Before swap: a = 10, b = 20
+After swap: a = 20, b = 10
+
+Debug task:
+The swap function uses pointers, but values are not changing in main.
+Check whether pointer addresses are being swapped or actual values are being swapped.`,
+    starterCode: `#include <stdio.h>
+
+/*
+Instruction:
+This program is intentionally buggy.
+Find and fix the bug so it correctly swaps two numbers using pointers.
+
+Input:
+Two integers a and b.
+
+Expected output for input: 10 20
+Before swap: a = 10, b = 20
+After swap: a = 20, b = 10
+
+Debug task:
+The swap function uses pointers, but values are not changing in main.
+Check whether pointer addresses are being swapped or actual values are being swapped.
+*/
+
+void swap(int *a, int *b) {
+    int *temp = a;
+    a = b;
+    b = temp;
+}
+
+int main(void) {
+    int a, b;
+
+    scanf("%d %d", &a, &b);
+
+    printf("Before swap: a = %d, b = %d\\n", a, b);
+    swap(&a, &b);
+    printf("After swap: a = %d, b = %d\\n", a, b);
+
+    return 0;
+}`,
+  },
+  "q3": {
+    id: "q3",
+    title: "Bug 3: String ASCII",
+    text: `Instruction:
+This program is intentionally buggy.
+Find and fix the bug so it converts a lowercase string to uppercase using ASCII values.
+Then print each character with its ASCII value.
+
+Input:
+A single lowercase word (no spaces), for example: hello
+
+Expected output for input: hello
+Uppercase: HELLO
+ASCII values:
+H -> 72
+E -> 69
+L -> 76
+L -> 76
+O -> 79
+
+Debug task:
+The conversion logic is wrong. Check the ASCII operation used for lowercase letters.`,
+    starterCode: `#include <stdio.h>
+
+/*
+Instruction:
+This program is intentionally buggy.
+Find and fix the bug so it converts a lowercase string to uppercase using ASCII values.
+Then print each character with its ASCII value.
+
+Input:
+A single lowercase word (no spaces), for example: hello
+
+Expected output for input: hello
+Uppercase: HELLO
+ASCII values:
+H -> 72
+E -> 69
+L -> 76
+L -> 76
+O -> 79
+
+Debug task:
+The conversion logic is wrong. Check the ASCII operation used for lowercase letters.
+*/
+
+int main(void) {
+    char s[100];
+    int i;
+
+    scanf("%99s", s);
+
+    for (i = 0; s[i] != '\\0'; i++) {
+        if (s[i] >= 'a' && s[i] <= 'z') {
+            s[i] = s[i] + 32;
+        }
+    }
+
+    printf("Uppercase: %s\\n", s);
+    printf("ASCII values:\\n");
+
+    for (i = 0; s[i] != '\\0'; i++) {
+        printf("%c -> %d\\n", s[i], (int)s[i]);
+    }
+
+    return 0;
+}`,
+  },
+  "q4": {
+    id: "q4",
+    title: "Bug 4: Bitwise & Hex",
+    text: `Instruction:
+This program is intentionally buggy.
+Find and fix the bug so it correctly uses bitwise operators and format specifiers.
+
+Input:
+One integer n.
+
+Expected output for input: 10
+n & 1 = 0
+n << 1 = 20
+n >> 1 = 5
+Hex of n = 0xA
+
+Debug task:
+1) One expression uses a logical operator instead of a bitwise operator.
+2) The hex output line uses the wrong format specifier.`,
+    starterCode: `#include <stdio.h>
+
+/*
+Instruction:
+This program is intentionally buggy.
+Find and fix the bug so it correctly uses bitwise operators and format specifiers.
+
+Input:
+One integer n.
+
+Expected output for input: 10
+n & 1 = 0
+n << 1 = 20
+n >> 1 = 5
+Hex of n = 0xA
+
+Debug task:
+1) One expression uses a logical operator instead of a bitwise operator.
+2) The hex output line uses the wrong format specifier.
+*/
+
+int main(void) {
+    int n;
+
+    scanf("%d", &n);
+
+    int odd_bit = n && 1;
+
+    printf("n & 1 = %d\\n", odd_bit);
+    printf("n << 1 = %d\\n", n << 1);
+    printf("n >> 1 = %d\\n", n >> 1);
+    printf("Hex of n = 0x%d\\n", n);
+
+    return 0;
+}`,
+  },
+  "q5": {
+    id: "q5",
+    title: "Bug 5: Struct Typedef",
+    text: `Instruction:
+This program is intentionally buggy.
+Find and fix the bug so it correctly uses typedef with a structure and prints student data.
+
+Input:
+One student record in this format:
+roll name marks
+Example: 101 Ravi 88.5
+
+Expected output for input: 101 Ravi 88.5
+Roll: 101
+Name: Ravi
+Marks: 88.50
+
+Debug task:
+1) Check whether typedef name and structure usage match.
+2) Check the format specifier used to print marks.`,
+    starterCode: `#include <stdio.h>
+
+/*
+Instruction:
+This program is intentionally buggy.
+Find and fix the bug so it correctly uses typedef with a structure and prints student data.
+
+Input:
+One student record in this format:
+roll name marks
+Example: 101 Ravi 88.5
+
+Expected output for input: 101 Ravi 88.5
+Roll: 101
+Name: Ravi
+Marks: 88.50
+
+Debug task:
+1) Check whether typedef name and structure usage match.
+2) Check the format specifier used to print marks.
+*/
+
+typedef struct {
+    int roll;
+    char name[50];
+    float marks;
+} Student;
+
+int main(void) {
+    struct Student s;
+
+    scanf("%d %49s %f", &s.roll, s.name, &s.marks);
+
+    printf("Roll: %d\\n", s.roll);
+    printf("Name: %s\\n", s.name);
+    printf("Marks: %d\\n", s.marks);
+
+    return 0;
+}`,
+  },
+  "q6": {
+    id: "q6",
+    title: "Bug 6: Factorial Recursion",
+    text: `Instruction:
+This program is intentionally buggy.
+Find and fix the bug so it correctly calculates factorial using recursion.
+
+Input:
+One non-negative integer n.
+
+Expected output for input: 5
+Factorial of 5 is 120
+
+Debug task:
+1) Check the recursive step carefully.
+2) Make sure the base case works correctly.`,
+    starterCode: `#include <stdio.h>
+
+/*
+Instruction:
+This program is intentionally buggy.
+Find and fix the bug so it correctly calculates factorial using recursion.
+
+Input:
+One non-negative integer n.
+
+Expected output for input: 5
+Factorial of 5 is 120
+
+Debug task:
+1) Check the recursive step carefully.
+2) Make sure the base case works correctly.
+*/
+
+int factorial(int n) {
+    return n + factorial(n - 1);
+}
+
+int main(void) {
+    int n;
+
+    scanf("%d", &n);
+
+    printf("Factorial of %d is %d\\n", n, factorial(n));
+
+    return 0;
+}`,
+  },
+  "q7": {
+    id: "q7",
+    title: "Bug 7: Selection Sort",
+    text: `Instruction:
+This program is intentionally buggy.
+Find and fix the bug so it sorts characters of a string in ascending order
+using selection sort.
+
+Input:
+A single word (no spaces), for example: dcba
+
+Expected output for input: dcba
+Sorted string: abcd
+
+Debug task:
+The selection logic is wrong for ascending order.
+Check the comparison used while finding the minimum character.`,
+    starterCode: `#include <stdio.h>
+#include <string.h>
+
+/*
+Instruction:
+This program is intentionally buggy.
+Find and fix the bug so it sorts characters of a string in ascending order
+using selection sort.
+
+Input:
+A single word (no spaces), for example: dcba
+
+Expected output for input: dcba
+Sorted string: abcd
+
+Debug task:
+The selection logic is wrong for ascending order.
+Check the comparison used while finding the minimum character.
+*/
+
+int main(void) {
+    char s[100];
+    int i, j, min_idx, n;
+    char temp;
+
+    scanf("%99s", s);
+    n = (int)strlen(s);
+
+    for (i = 0; i < n - 1; i++) {
+        min_idx = i;
+
+        for (j = i + 1; j < n; j++) {
+            if (s[j] > s[min_idx]) {
+                min_idx = j;
+            }
+        }
+
+        temp = s[i];
+        s[i] = s[min_idx];
+        s[min_idx] = temp;
+    }
+
+    printf("Sorted string: %s\\n", s);
+
+    return 0;
+}`,
+  },
+  "q8": {
+    id: "q8",
+    title: "Bug 8: Basic I/O",
+    text: `Instruction:
+This program is intentionally buggy.
+Find and fix the boilerplate and printf/scanf issues.
+
+Input:
+One integer number.
+
+Expected output for input: 25
+You entered: 25
+Square: 625
+
+Debug task:
+1) Check scanf usage.
+2) Check printf format specifiers.
+3) Keep proper C boilerplate structure.`,
+    starterCode: `#include <stdio.h>
+
+/*
+Instruction:
+This program is intentionally buggy.
+Find and fix the boilerplate and printf/scanf issues.
+
+Input:
+One integer number.
+
+Expected output for input: 25
+You entered: 25
+Square: 625
+
+Debug task:
+1) Check scanf usage.
+2) Check printf format specifiers.
+3) Keep proper C boilerplate structure.
+*/
+
+int main(void) {
+    int n;
+
+    scanf("%d", n);
+
+    printf("You entered: %f\\n"+ n);
+    printf("Square: %d\\n", n * n);
+
+    return 0;
+}`,
+  },
+  "q9": {
+    id: "q9",
+    title: "Bug 9: Loop & Logic",
+    text: `Instruction:
+This program is intentionally buggy.
+Find and fix the if-else and loop issues.
+
+Input:
+One positive integer n.
+
+Expected output for input: 5
+1 is Odd
+2 is Even
+3 is Odd
+4 is Even
+5 is Odd
+
+Debug task:
+1) Check the loop range.
+2) Check the if-else condition for even/odd.`,
+    starterCode: `#include <stdio.h>
+
+/*
+Instruction:
+This program is intentionally buggy.
+Find and fix the if-else and loop issues.
+
+Input:
+One positive integer n.
+
+Expected output for input: 5
+1 is Odd
+2 is Even
+3 is Odd
+4 is Even
+5 is Odd
+
+Debug task:
+1) Check the loop range.
+2) Check the if-else condition for even/odd.
+*/
+
+int main(void) {
+    int n, i;
+
+    scanf("%d", &n);
+
+    for (i = 1; i < n; i++) {
+        if (i % 2 == 1) {
+            printf("%d is Even\\n", i);
+        } else {
+            printf("%d is Odd\\n", i);
+        }
+    }
+
+    return 0;
+}`,
+  },
+  "q10": {
+    id: "q10",
+    title: "Bug 10: File Handling",
+    text: `Instruction:
+This program is intentionally buggy.
+Find and fix the bug so it writes a number to a file and reads it back.
+
+Input:
+One integer n.
+
+Expected output for input: 42
+Value read from file: 42
+
+Debug task:
+1) Check the file open mode used for writing.
+2) Ensure data is written correctly before reading.`,
+    starterCode: `#include <stdio.h>
+
+/*
+Instruction:
+This program is intentionally buggy.
+Find and fix the bug so it writes a number to a file and reads it back.
+
+Input:
+One integer n.
+
+Expected output for input: 42
+Value read from file: 42
+
+Debug task:
+1) Check the file open mode used for writing.
+2) Ensure data is written correctly before reading.
+*/
+
+int main(void) {
+    int n, value;
+    FILE *fp;
+
+    scanf("%d", &n);
+
+    fp = fopen("number.txt", "r");
+    if (fp == NULL) {
+        printf("File open error\\n");
+        return 1;
+    }
+
+    fprintf(fp, "%d", n);
+    fclose(fp);
+
+    fp = fopen("number.txt", "r");
+    if (fp == NULL) {
+        printf("File open error\\n");
+        return 1;
+    }
+
+    fscanf(fp, "%d", &value);
+    fclose(fp);
+
+    printf("Value read from file: %d\\n", value);
+
+    return 0;
+}`,
   }
 };
-// Auto-generate placeholders for q3 to q10
-for(let i = 3; i <= 10; i++) {
-  QUESTIONS[`q${i}`] = {
-    id: `q${i}`,
-    title: `Bug ${i}: Placeholder`,
-    text: `Question ${i}:\nPlaceholder prompt. Overwrite this in App.jsx when you have the real question.`,
-    starterCode: `// Placeholder starter code for Question ${i}\n`
-  };
-}
 
 function App() {
   const [loaderHidden, setLoaderHidden] = useState(false)
