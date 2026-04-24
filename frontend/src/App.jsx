@@ -66,6 +66,7 @@ function App() {
   const [buttonText, setButtonText] = useState('> Activate Sharingan')
   const [session, setSession] = useState(null)
   const [timeLeft, setTimeLeft] = useState(DEFAULT_DURATION_MINUTES * 60)
+  const [lockdownTimeLeft, setLockdownTimeLeft] = useState(0)
   
   const [currentQuestionId, setCurrentQuestionId] = useState('q1')
   const [editedCode, setEditedCode] = useState(QUESTIONS['q1'].starterCode)
@@ -141,6 +142,16 @@ function App() {
   }, [session])
 
   useEffect(() => {
+    let timer;
+    if (lockdownTimeLeft > 0) {
+      timer = setInterval(() => {
+        setLockdownTimeLeft((prev) => prev - 1)
+      }, 1000)
+    }
+    return () => clearInterval(timer)
+  }, [lockdownTimeLeft])
+
+  useEffect(() => {
     if (!session || session.role !== 'team') {
       return undefined
     }
@@ -161,7 +172,8 @@ function App() {
           setDisqualifiedTeams((teams) =>
             teams.includes(session.id) ? teams : [...teams, session.id],
           )
-          setSystemWarning(`${session.id} has been disqualified after 3 tab switches.`)
+          setSystemWarning(`${session.id} has been disqualified after 3 tab switches. 1 Minute Lockdown applied.`)
+          setLockdownTimeLeft(60)
         } else {
           setSystemWarning(`Warning: ${session.id} changed tabs. Count ${nextCount}/3.`)
         }
@@ -518,8 +530,11 @@ function App() {
                       <div className="empty-state">Teams will appear here as they log in.</div>
                     ) : (
                       visibleLeaderboard.map((team) => (
-                        <div key={team.id} className="score-row">
-                          <span>#{team.rank}</span>
+                        <div key={team.id} className={`score-row ${team.rank === 1 ? 'rank-1' : team.rank === 2 ? 'rank-2' : team.rank === 3 ? 'rank-3' : ''}`}>
+                          <span className="rank-badge">
+                            {team.rank === 1 && <span className="crown" style={{ display: 'inline-block', marginRight: '4px' }}>👑</span>}
+                            #{team.rank}
+                          </span>
                           <strong>{team.name}</strong>
                           <span>{team.solved}</span>
                           <span>{team.points}</span>
@@ -581,6 +596,19 @@ function App() {
           </div>
         )}
       </div>
+
+      {session && session.role === 'team' && lockdownTimeLeft > 0 && (
+        <div className="lockdown-overlay">
+          <div className="lockdown-content">
+            <div className="eye-frame" style={{ width: '100px', height: '100px', margin: '0 auto 20px' }}>
+               <img src={sharinganImage} alt="Sharingan" className="sharingan-image loader-eye-image" />
+            </div>
+            <h2>SYSTEM LOCKDOWN</h2>
+            <p>Multiple tab switches detected. Please wait.</p>
+            <div className="lockdown-timer">{lockdownTimeLeft}s</div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
