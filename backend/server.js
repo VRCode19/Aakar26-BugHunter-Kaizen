@@ -170,24 +170,28 @@ app.post('/api/login', async (req, res) => {
 // LEADERBOARD ROUTE
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    const teamsSnapshot = await db.collection('teams')
-      .where('hasLoggedIn', '==', true) 
-      .orderBy('score', 'desc')
-      .orderBy('lastFixed', 'asc')
-      .limit(50)
-      .get();
+    const teamsSnapshot = await db.collection('teams').get();
 
     const leaderboard = [];
     teamsSnapshot.forEach(doc => {
       const data = doc.data();
-      leaderboard.push({ 
-        name: doc.id, 
-        score: data.score || 0,
-        lastFixed: data.lastFixed ? data.lastFixed.toDate() : null
-      });
+      if (data.hasLoggedIn) {
+        leaderboard.push({ 
+          name: doc.id, 
+          score: data.score || 0,
+          lastFixed: data.lastFixed ? data.lastFixed.toDate() : new Date(0)
+        });
+      }
     });
 
-    res.json({ success: true, leaderboard });
+    leaderboard.sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return a.lastFixed - b.lastFixed;
+    });
+
+    res.json({ success: true, leaderboard: leaderboard.slice(0, 50) });
   } catch (error) {
     console.error("Leaderboard Error:", error);
     res.status(500).json({ success: false, message: "Error fetching leaderboard" });
