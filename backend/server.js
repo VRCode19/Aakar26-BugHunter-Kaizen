@@ -365,13 +365,13 @@ app.post('/api/submit', async (req, res) => {
 
       io.emit('new_approval_request', { teamName, questionId });
       
-      return res.json({ success: true, message: "Code output is correct! Waiting for Admin approval..." });
+      return res.json({ success: true, message: `Code output is correct! Waiting for Admin approval...\nYour output: '${actualOutput.substring(0, 100)}'` });
     } else {
       const actualOutputText = actualOutput.substring(0, 100);
       return res.json({ 
         success: false, 
         message: "Incorrect Output", 
-        error: `Output did not match expected result.\nReceived: '${actualOutputText}'` 
+        error: `Output did not match expected result.\nYour output:    '${actualOutputText}'\nExpected output: '${expectedOutput.substring(0, 100)}'` 
       });
     }
 
