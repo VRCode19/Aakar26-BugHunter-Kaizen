@@ -136,8 +136,6 @@ function App() {
     newSocket.on('score_updated', (data) => {
       fetchLeaderboard()
       if (data && data.message) {
-        // If the user is a team, only show warnings addressed to them or global non-penalty messages
-        // Or we just let setSystemWarning update, but let's just show it.
         setSystemWarning(data.message)
       }
     })
@@ -154,7 +152,16 @@ function App() {
       fetchApprovals()
     })
 
-    return () => newSocket.disconnect()
+    // Auto-poll approvals every 5s as backup for socket events
+    const approvalPoll = setInterval(() => {
+      fetchApprovals()
+      fetchLeaderboard()
+    }, 5000)
+
+    return () => {
+      newSocket.disconnect()
+      clearInterval(approvalPoll)
+    }
   }, [])
 
   useEffect(() => {
