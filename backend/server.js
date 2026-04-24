@@ -340,7 +340,7 @@ app.post('/api/run', async (req, res) => {
   }
 });
 
-// SUBMIT ROUTE (Compile, Validate & Submit for Approval)
+// SUBMIT ROUTE (Submit for Admin Approval - No Validation)
 app.post('/api/submit', async (req, res) => {
   const { teamName, questionId, submittedCode } = req.body;
 
@@ -352,7 +352,6 @@ app.post('/api/submit', async (req, res) => {
   if (!question) return res.status(404).json({ error: "Question not found" });
 
   console.log(`\n📥 Submission Received: Team: ${teamName}, Question: ${questionId}`);
-  console.log(`🎯 Expected Output: "${question.expectedOutput.substring(0, 30)}..."`);
 
   try {
     // Check Firebase FIRST to prevent double-dipping
@@ -362,7 +361,7 @@ app.post('/api/submit', async (req, res) => {
     if (!teamDoc.exists) return res.status(404).json({ error: "Team not found" });
     const teamData = teamDoc.data();
 
-    // 🛑 ANTI-CHEAT
+    // 🛑 ANTI-CHEAT - Check if already solved
     if (teamData.solvedQuestions && teamData.solvedQuestions.includes(questionId)) {
       return res.json({
         success: false,
@@ -370,86 +369,32 @@ app.post('/api/submit', async (req, res) => {
       });
     }
 
-    // Compile & execute via Godbolt
-    let actualOutput = null;
-    let compilerErrorStr = null;
-
-    const gbResult = await executeWithGodbolt(submittedCode, question.testInput);
-    if (gbResult.actualOutput !== null || gbResult.compilerErrorStr !== null) {
-      actualOutput = gbResult.actualOutput;
-      compilerErrorStr = gbResult.compilerErrorStr;
-    }
-
-    // Trim actual output to match expected output formatting
-    if (actualOutput !== null) {
-      actualOutput = actualOutput.trim();
-    }
-
-    // API 4: Failsafe Regex Match (Guarantees Event Success)
-    if (actualOutput === null && compilerErrorStr === null) {
-      console.log("All APIs failed! Using Failsafe Regex Mathing...");
-      const codeClean = submittedCode.replace(/\s+/g, '');
-      let isRegexCorrect = false;
-      if (questionId === 'q1' && codeClean.includes('j<=i')) isRegexCorrect = true;
-      else if (questionId === 'q2' && codeClean.includes('*a=*b')) isRegexCorrect = true;
-      else if (questionId === 'q3' && codeClean.includes('s[i]-32')) isRegexCorrect = true;
-      else if (questionId === 'q4' && codeClean.includes('%X')) isRegexCorrect = true;
-      else if (questionId === 'q5' && codeClean.includes('Student;')) isRegexCorrect = true;
-      else if (questionId === 'q6' && codeClean.includes('n*factorial')) isRegexCorrect = true;
-      else if (questionId === 'q7' && codeClean.includes('s[j]<s[min_idx]')) isRegexCorrect = true;
-      else if (questionId === 'q8' && codeClean.includes('&n')) isRegexCorrect = true;
-      else if (questionId === 'q9' && codeClean.includes('i<=n')) isRegexCorrect = true;
-      else if (questionId === 'q10' && codeClean.includes('"w"')) isRegexCorrect = true;
-
-      if (isRegexCorrect) {
-        actualOutput = question.expectedOutput.trim();
-      } else {
-        return res.json({ success: false, message: "Incorrect Syntax", error: "Your code doesn't exactly fix the bug. Try adjusting your syntax." });
-      }
-    }
-
-    if (compilerErrorStr) {
-      return res.json({ success: false, message: "Compilation Error", error: compilerErrorStr });
-    }
-
-    const expectedOutput = question.expectedOutput.trim();
-
-    // If actualOutput is null at this point, something went wrong
-    if (actualOutput === null) {
-      return res.json({ success: false, message: "Execution Failed", error: "Code did not produce any output. Please check your code." });
-    }
-
-    // Direct string comparison with trimming and newline normalization
-    const normalizeOutput = (str) => {
-      return str.trim().replace(/\r\n/g, '\n');
-    };
-
-    const normalizedActual = normalizeOutput(actualOutput);
-    const normalizedExpected = normalizeOutput(expectedOutput);
-
-    if (normalizedActual === normalizedExpected) {
-      // 🎉 Create Pending Approval instead of Auto-Updating Database
-      await teamRef.set({
-        pendingApproval: {
-          questionId: questionId,
-          code: submittedCode,
-          timestamp: admin.firestore.FieldValue.serverTimestamp()
-        }
-      }, { merge: true });
-
-      io.emit('new_approval_request', { teamName, questionId });
-
-      return res.json({ success: true, message: `Code output is correct! Waiting for Admin approval...\nYour output: '${normalizedActual.substring(0, 100)}'` });
-    } else {
+    // 🛑 ANTI-CHEAT - Check if already pending approval
+    if (teamData.pendingApproval && teamData.pendingApproval.questionId === questionId) {
       return res.json({
         success: false,
-        message: "Incorrect Output",
-        error: `Output did not match expected result.\nYour output:\n'${normalizedActual}'\n\nExpected output:\n'${normalizedExpected}'`
+        message: "This submission is already pending admin approval. Please wait!"
       });
     }
 
+    // 🎉 Create Pending Approval - No validation, admin will review
+    await teamRef.set({
+      pendingApproval: {
+        questionId: questionId,
+        code: submittedCode,
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      }
+    }, { merge: true });
+
+    io.emit('new_approval_request', { teamName, questionId });
+
+    return res.json({ 
+      success: true, 
+      message: `Submission received! Waiting for admin review...\nAdmin will verify your fix and update the leaderboard.` 
+    });
+
   } catch (error) {
-    console.error("Ultimate Compiler Catch Error:", error);
+    console.error("Submit Error:", error);
     res.status(500).json({ error: "System failure. Could not process submission." });
   }
 });
@@ -465,13 +410,55 @@ app.get('/api/approvals', async (req, res) => {
     teamsSnapshot.forEach(doc => {
       const data = doc.data();
       if (data.pendingApproval) {
-        approvals.push({ teamName: doc.id, ...data.pendingApproval });
+        const timestamp = data.pendingApproval.timestamp;
+        approvals.push({ 
+          teamName: doc.id, 
+          ...data.pendingApproval,
+          submissionTime: timestamp ? timestamp.toDate() : new Date()
+        });
       }
     });
     res.json({ success: true, approvals });
   } catch (error) {
     console.error("Approvals Error:", error);
     res.status(500).json({ success: false, message: "Error fetching approvals" });
+  }
+});
+
+// Submission history route - shows all question submissions with timestamps
+app.get('/api/submission-history', async (req, res) => {
+  try {
+    const teamsSnapshot = await db.collection('teams').get();
+    const history = [];
+
+    teamsSnapshot.forEach(doc => {
+      const data = doc.data();
+      const teamName = doc.id;
+
+      if (data.solvedQuestions && data.solvedQuestions.length > 0) {
+        data.solvedQuestions.forEach(questionId => {
+          const completionTime = data.completionTimes?.[questionId];
+          history.push({
+            teamName,
+            questionId,
+            completionTime: completionTime ? completionTime.toDate() : null,
+            points: questionBank[questionId]?.points || 0
+          });
+        });
+      }
+    });
+
+    // Sort by completion time (earliest first)
+    history.sort((a, b) => {
+      if (!a.completionTime) return 1;
+      if (!b.completionTime) return -1;
+      return a.completionTime - b.completionTime;
+    });
+
+    res.json({ success: true, history });
+  } catch (error) {
+    console.error("Submission History Error:", error);
+    res.status(500).json({ success: false, message: "Error fetching submission history" });
   }
 });
 
@@ -489,18 +476,53 @@ app.post('/api/approve', async (req, res) => {
 
     if (action === 'accept') {
       const question = questionBank[questionId];
+      const submissionTimestamp = teamData.pendingApproval.timestamp;
+      
+      // Build completion times object
+      const completionTimes = (teamData.completionTimes || {});
+      completionTimes[questionId] = admin.firestore.FieldValue.serverTimestamp();
+
       await teamRef.set({
         score: admin.firestore.FieldValue.increment(question.points),
         solvedQuestions: admin.firestore.FieldValue.arrayUnion(questionId),
+        completionTimes: completionTimes,
         lastFixed: admin.firestore.FieldValue.serverTimestamp(),
         pendingApproval: admin.firestore.FieldValue.delete()
       }, { merge: true });
 
-      io.emit('score_updated', { teamName, points: question.points });
+      io.emit('score_updated', { teamName, points: question.points, questionId, submissionTime: submissionTimestamp, completionTime: new Date() });
       io.emit('approval_status', { teamName, status: 'accepted', message: 'Admin accepted your solution! You may move to the next question.' });
 
+      // Broadcast leaderboard update to all connected clients
+      const teamsSnapshot = await db.collection('teams').get();
+      const leaderboard = [];
+      teamsSnapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.hasLoggedIn) {
+          leaderboard.push({
+            name: doc.id,
+            score: data.score || 0,
+            solved: (data.solvedQuestions && data.solvedQuestions.length) || 0,
+            lastFixed: data.lastFixed ? data.lastFixed.toDate() : new Date(0),
+            solvedQuestions: data.solvedQuestions || [],
+            completionTimes: data.completionTimes || {}
+          });
+        }
+      });
+
+      leaderboard.sort((a, b) => {
+        if (b.score !== a.score) {
+          return b.score - a.score;
+        }
+        return a.lastFixed - b.lastFixed;
+      });
+
+      io.emit('leaderboard_update', { leaderboard: leaderboard.slice(0, 50) });
+
       // Victory Check
-      if (teamData.solvedQuestions && teamData.solvedQuestions.length === 9) {
+      const updatedDoc = await teamRef.get();
+      const updatedData = updatedDoc.data();
+      if (updatedData.solvedQuestions && updatedData.solvedQuestions.length === 10) {
         console.log(`🏆 ${teamName} HAS COMPLETED ALL 10 BUGS!`);
         io.emit('team_finished_all', { teamName: teamName });
       }

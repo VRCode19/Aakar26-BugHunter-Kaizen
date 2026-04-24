@@ -435,6 +435,7 @@ function App() {
   const [systemWarning, setSystemWarning] = useState('')
   const [leaderboard, setLeaderboard] = useState([])
   const [approvals, setApprovals] = useState([])
+  const [submissionHistory, setSubmissionHistory] = useState([])
   const [socket, setSocket] = useState(null)
 
   const fetchApprovals = async () => {
@@ -445,6 +446,17 @@ function App() {
       }
     } catch (error) {
       console.error('Error fetching approvals:', error)
+    }
+  }
+
+  const fetchSubmissionHistory = async () => {
+    try {
+      const response = await axios.get(`${BACKEND_URL}/api/submission-history`)
+      if (response.data.success) {
+        setSubmissionHistory(response.data.history)
+      }
+    } catch (error) {
+      console.error('Error fetching submission history:', error)
     }
   }
 
@@ -467,6 +479,7 @@ function App() {
   useEffect(() => {
     fetchLeaderboard()
     fetchApprovals()
+    fetchSubmissionHistory()
     const newSocket = io(BACKEND_URL)
     setSocket(newSocket)
 
@@ -474,6 +487,15 @@ function App() {
       fetchLeaderboard()
       if (data && data.message) {
         setSystemWarning(data.message)
+      }
+    })
+
+    newSocket.on('leaderboard_update', (data) => {
+      if (data && data.leaderboard) {
+        setLeaderboard(data.leaderboard.map(t => ({
+          ...t,
+          lastFixed: new Date(t.lastFixed)
+        })))
       }
     })
 
@@ -1006,6 +1028,9 @@ function App() {
                           <div key={appr.teamName + appr.questionId} className="admin-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
                             <div style={{marginBottom: '10px'}}>
                               <strong style={{fontSize: '1.1rem'}}>{appr.teamName}</strong> submitted <span style={{color: 'gold'}}>{QUESTIONS[appr.questionId]?.title || appr.questionId}</span>
+                              <div style={{fontSize: '0.85rem', color: '#aaa', marginTop: '4px'}}>
+                                Submitted: {appr.submissionTime ? new Date(appr.submissionTime).toLocaleString() : 'Unknown time'}
+                              </div>
                             </div>
                             <textarea
                               readOnly
