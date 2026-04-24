@@ -461,15 +461,8 @@ function App() {
       fetchApprovals()
     })
 
-    // Auto-poll approvals every 5s as backup for socket events
-    const approvalPoll = setInterval(() => {
-      fetchApprovals()
-      fetchLeaderboard()
-    }, 5000)
-
     return () => {
       newSocket.disconnect()
-      clearInterval(approvalPoll)
     }
   }, [])
 
