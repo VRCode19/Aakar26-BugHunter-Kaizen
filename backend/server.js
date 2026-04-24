@@ -46,60 +46,70 @@ const questionBank = {
     id: "q1",
     points: 10,
     testInput: "5",
+    expectedOutput: "1\n12\n123\n1234\n12345",
     initialCode: `#include <stdio.h>\n\nint main(void) {\n    int n, i, j;\n\n    scanf("%d", &n);\n\n    for (i = 1; i <= n; i++) {\n        for (j = 1; j < i; j++) {\n            printf("%d", j);\n        }\n        printf("\\n");\n    }\n\n    return 0;\n}`
   },
   "q2": {
     id: "q2",
     points: 20,
-    testInput: "10\n20",
+    testInput: "10 20",
+    expectedOutput: "Before swap: a = 10, b = 20\nAfter swap: a = 20, b = 10",
     initialCode: `#include <stdio.h>\n\nvoid swap(int *a, int *b) {\n    int *temp = a;\n    a = b;\n    b = temp;\n}\n\nint main(void) {\n    int a, b;\n\n    scanf("%d %d", &a, &b);\n\n    printf("Before swap: a = %d, b = %d\\n", a, b);\n    swap(&a, &b);\n    printf("After swap: a = %d, b = %d\\n", a, b);\n\n    return 0;\n}`
   },
   "q3": {
     id: "q3",
     points: 30,
     testInput: "hello",
+    expectedOutput: "Uppercase: HELLO\nASCII values:\nH -> 72\nE -> 69\nL -> 76\nL -> 76\nO -> 79",
     initialCode: `#include <stdio.h>\n\nint main(void) {\n    char s[100];\n    int i;\n\n    scanf("%99s", s);\n\n    for (i = 0; s[i] != '\\0'; i++) {\n        if (s[i] >= 'a' && s[i] <= 'z') {\n            s[i] = s[i] + 32;\n        }\n    }\n\n    printf("Uppercase: %s\\n", s);\n    printf("ASCII values:\\n");\n\n    for (i = 0; s[i] != '\\0'; i++) {\n        printf("%c -> %d\\n", s[i], (int)s[i]);\n    }\n\n    return 0;\n}`
   },
   "q4": {
     id: "q4",
     points: 40,
     testInput: "10",
+    expectedOutput: "n & 1 = 0\nn << 1 = 20\nn >> 1 = 5\nHex of n = 0xa",
     initialCode: `#include <stdio.h>\n\nint main(void) {\n    int n;\n\n    scanf("%d", &n);\n\n    int odd_bit = n && 1;\n\n    printf("n & 1 = %d\\n", odd_bit);\n    printf("n << 1 = %d\\n", n << 1);\n    printf("n >> 1 = %d\\n", n >> 1);\n    printf("Hex of n = 0x%d\\n", n);\n\n    return 0;\n}`
   },
   "q5": {
     id: "q5",
     points: 50,
-    testInput: "101\nRavi\n88.5",
+    testInput: "101 Ravi 88.5",
+    expectedOutput: "Roll: 101\nName: Ravi\nMarks: 88.50",
     initialCode: `#include <stdio.h>\n\ntypedef struct {\n    int roll;\n    char name[50];\n    float marks;\n} Student;\n\nint main(void) {\n    struct Student s;\n\n    scanf("%d %49s %f", &s.roll, s.name, &s.marks);\n\n    printf("Roll: %d\\n", s.roll);\n    printf("Name: %s\\n", s.name);\n    printf("Marks: %d\\n", s.marks);\n\n    return 0;\n}`
   },
   "q6": {
     id: "q6",
     points: 60,
     testInput: "5",
+    expectedOutput: "Factorial of 5 is 120",
     initialCode: `#include <stdio.h>\n\nint factorial(int n) {\n    return n + factorial(n - 1);\n}\n\nint main(void) {\n    int n;\n\n    scanf("%d", &n);\n\n    printf("Factorial of %d is %d\\n", n, factorial(n));\n\n    return 0;\n}`
   },
   "q7": {
     id: "q7",
     points: 70,
     testInput: "dcba",
+    expectedOutput: "Sorted string: abcd",
     initialCode: `#include <stdio.h>\n#include <string.h>\n\nint main(void) {\n    char s[100];\n    int i, j, min_idx, n;\n    char temp;\n\n    scanf("%99s", s);\n    n = (int)strlen(s);\n\n    for (i = 0; i < n - 1; i++) {\n        min_idx = i;\n\n        for (j = i + 1; j < n; j++) {\n            if (s[j] > s[min_idx]) {\n                min_idx = j;\n            }\n        }\n\n        temp = s[i];\n        s[i] = s[min_idx];\n        s[min_idx] = temp;\n    }\n\n    printf("Sorted string: %s\\n", s);\n\n    return 0;\n}`
   },
   "q8": {
     id: "q8",
     points: 80,
     testInput: "25",
+    expectedOutput: "You entered: 25\nSquare: 625",
     initialCode: `#include <stdio.h>\n\nint main(void) {\n    int n;\n\n    scanf("%d", n);\n\n    printf("You entered: %f\\n"+ n);\n    printf("Square: %d\\n", n * n);\n\n    return 0;\n}`
   },
   "q9": {
     id: "q9",
     points: 90,
     testInput: "5",
+    expectedOutput: "1 is Odd\n2 is Even\n3 is Odd\n4 is Even\n5 is Odd",
     initialCode: `#include <stdio.h>\n\nint main(void) {\n    int n, i;\n\n    scanf("%d", &n);\n\n    for (i = 1; i < n; i++) {\n        if (i % 2 == 1) {\n            printf("%d is Even\\n", i);\n        } else {\n            printf("%d is Odd\\n", i);\n        }\n    }\n\n    return 0;\n}`
   },
   "q10": {
     id: "q10",
     points: 100,
     testInput: "42",
+    expectedOutput: "Value read from file: 42",
     initialCode: `#include <stdio.h>\n\nint main(void) {\n    int n, value;\n    FILE *fp;\n\n    scanf("%d", &n);\n\n    fp = fopen("number.txt", "r");\n    if (fp == NULL) {\n        printf("File open error\\n");\n        return 1;\n    }\n\n    fprintf(fp, "%d", n);\n    fclose(fp);\n\n    fp = fopen("number.txt", "r");\n    if (fp == NULL) {\n        printf("File open error\\n");\n        return 1;\n    }\n\n    fscanf(fp, "%d", &value);\n    fclose(fp);\n\n    printf("Value read from file: %d\\n", value);\n\n    return 0;\n}`
   }
 };
@@ -308,7 +318,7 @@ app.post('/api/run', async (req, res) => {
     let actualOutput = null;
     let compilerErrorStr = null;
 
-    const inputToUse = req.body.customInput !== undefined ? req.body.customInput : question.testInput;
+    const inputToUse = (req.body.customInput !== undefined && req.body.customInput.trim() !== "") ? req.body.customInput : question.testInput;
     const gbResult = await executeWithGodbolt(submittedCode, inputToUse);
     if (gbResult.actualOutput !== null || gbResult.compilerErrorStr !== null) {
       actualOutput = gbResult.actualOutput;
@@ -367,21 +377,71 @@ app.post('/api/submit', async (req, res) => {
       });
     }
 
-    // 🎉 Create Pending Approval - No validation, admin will review
-    await teamRef.set({
-      pendingApproval: {
-        questionId: questionId,
-        code: submittedCode,
-        timestamp: admin.firestore.FieldValue.serverTimestamp()
-      }
-    }, { merge: true });
+    // 🌟 Automatic Validation 🌟
+    const gbResult = await executeWithGodbolt(submittedCode, question.testInput);
+    
+    if (gbResult.compilerErrorStr) {
+      return res.json({ 
+        success: false, 
+        message: "Compilation Error", 
+        error: gbResult.compilerErrorStr 
+      });
+    }
 
-    io.emit('new_approval_request', { teamName, questionId });
+    if (gbResult.actualOutput === null) {
+      return res.json({ 
+        success: false, 
+        message: "Execution Failed", 
+        error: "The compiler did not return any output. Check your code for infinite loops or crashes." 
+      });
+    }
 
-    return res.json({ 
-      success: true, 
-      message: `Submission received! Waiting for admin review...\nAdmin will verify your fix and update the leaderboard.` 
-    });
+    const actual = gbResult.actualOutput.trim().replace(/\r\n/g, '\n');
+    const expected = question.expectedOutput.trim().replace(/\r\n/g, '\n');
+
+    if (actual === expected) {
+      // 🎉 Bug Fixed!
+      await teamRef.set({
+        score: admin.firestore.FieldValue.increment(question.points),
+        solvedQuestions: admin.firestore.FieldValue.arrayUnion(questionId),
+        lastFixed: admin.firestore.FieldValue.serverTimestamp(),
+        pendingApproval: admin.firestore.FieldValue.delete() // Clear if any
+      }, { merge: true });
+
+      io.emit('score_updated', { 
+        teamName, 
+        points: question.points, 
+        message: `Team ${teamName} fixed ${questionId}!` 
+      });
+
+      // Broadcast leaderboard update
+      const teamsSnapshot = await db.collection('teams').get();
+      const leaderboard = [];
+      teamsSnapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.hasLoggedIn) {
+          leaderboard.push({
+            name: doc.id,
+            score: data.score || 0,
+            solved: (data.solvedQuestions && data.solvedQuestions.length) || 0,
+            lastFixed: data.lastFixed ? data.lastFixed.toDate() : new Date(0)
+          });
+        }
+      });
+      leaderboard.sort((a, b) => b.score - a.score || a.lastFixed - b.lastFixed);
+      io.emit('leaderboard_update', { leaderboard: leaderboard.slice(0, 50) });
+
+      return res.json({ 
+        success: true, 
+        message: `Bug Fixed! You earned ${question.points} points.` 
+      });
+    } else {
+      return res.json({ 
+        success: false, 
+        message: "Incorrect Output", 
+        error: `Unexpected output. Your code didn't produce the correct result for input '${question.testInput}'.` 
+      });
+    }
 
   } catch (error) {
     console.error("Submit Error:", error);
