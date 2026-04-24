@@ -351,6 +351,9 @@ app.post('/api/submit', async (req, res) => {
   const question = questionBank[questionId];
   if (!question) return res.status(404).json({ error: "Question not found" });
 
+  console.log(`\n📥 Submission Received: Team: ${teamName}, Question: ${questionId}`);
+  console.log(`🎯 Expected Output: "${question.expectedOutput.substring(0, 30)}..."`);
+
   try {
     // Check Firebase FIRST to prevent double-dipping
     const teamRef = db.collection('teams').doc(teamName);

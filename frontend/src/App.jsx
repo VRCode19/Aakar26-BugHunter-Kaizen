@@ -5,7 +5,7 @@ import './App.css'
 import sharinganImage from './assets/sharingan-3-tomoe.jpg'
 
 const DEFAULT_DURATION_MINUTES = 240
-const BACKEND_URL = import.meta.env.DEV ? 'http://localhost:5000' : 'https://aakar26-bughunter-kaizen.onrender.com'
+const BACKEND_URL = 'http://localhost:5000'; // FORCED LOCAL FOR TESTING
 
 function formatCountdown(totalSeconds) {
   const safeSeconds = Math.max(0, totalSeconds)
