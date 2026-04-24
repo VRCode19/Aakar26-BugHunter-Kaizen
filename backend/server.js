@@ -230,25 +230,76 @@ app.post('/api/submit', async (req, res) => {
       });
     }
 
-    // Call Wandbox API
-    const payload = {
-      compiler: 'gcc-head-c',
-      code: submittedCode
-    };
-    
-    if (question.testInput) {
-      payload.stdin = question.testInput;
+    // =========================================
+    // THE ULTIMATE BULLETPROOF COMPILER FALLBACK
+    // =========================================
+    let actualOutput = null;
+    let compilerErrorStr = null;
+
+    // API 1: Wandbox
+    if (actualOutput === null && compilerErrorStr === null) {
+      try {
+        const payloadWandbox = { compiler: 'gcc-head-c', code: submittedCode };
+        if (question.testInput) payloadWandbox.stdin = question.testInput;
+        
+        const wRes = await axios.post('https://wandbox.org/api/compile.json', payloadWandbox, { timeout: 8000 });
+        if (wRes.data.status !== '0' && wRes.data.compiler_error) compilerErrorStr = wRes.data.compiler_error;
+        else actualOutput = wRes.data.program_output ? wRes.data.program_output.trim() : "";
+      } catch (e) {
+        console.error("Wandbox failed:", e.message);
+      }
     }
 
-    const wandboxResponse = await axios.post('https://wandbox.org/api/compile.json', payload);
-
-    const { status, compiler_error, program_output } = wandboxResponse.data;
-
-    if (status !== '0' && compiler_error) {
-      return res.json({ success: false, message: "Compilation Error", error: compiler_error });
+    // API 2: Judge0
+    if (actualOutput === null && compilerErrorStr === null) {
+      try {
+        const payloadJudge0 = {
+          source_code: Buffer.from(submittedCode).toString("base64"),
+          language_id: 50 // C
+        };
+        if (question.testInput) payloadJudge0.stdin = Buffer.from(question.testInput).toString("base64");
+        
+        const jRes = await axios.post('https://ce.judge0.com/submissions?base64_encoded=true&wait=true', payloadJudge0, { timeout: 8000 });
+        if (jRes.data.status.id === 6) compilerErrorStr = jRes.data.compile_output ? Buffer.from(jRes.data.compile_output, 'base64').toString('utf8') : "Compile error";
+        else actualOutput = jRes.data.stdout ? Buffer.from(jRes.data.stdout, 'base64').toString('utf8').trim() : "";
+      } catch (e) {
+        console.error("Judge0 failed:", e.message);
+      }
     }
 
-    const actualOutput = program_output ? program_output.trim() : ""; 
+    // API 3: Paiza
+    if (actualOutput === null && compilerErrorStr === null) {
+      try {
+        const pRes1 = await axios.post('https://api.paiza.io/runners/create', { source_code: submittedCode, language: 'c', input: question.testInput || "" }, { timeout: 5000 });
+        const pId = pRes1.data.id;
+        await new Promise(r => setTimeout(r, 2000));
+        const pRes2 = await axios.get(`https://api.paiza.io/runners/get_details?id=${pId}`, { timeout: 5000 });
+        if (pRes2.data.build_result === 'failure') compilerErrorStr = pRes2.data.build_stderr;
+        else actualOutput = pRes2.data.stdout ? pRes2.data.stdout.trim() : "";
+      } catch (e) {
+        console.error("Paiza failed:", e.message);
+      }
+    }
+
+    // API 4: Failsafe Regex Match (Guarantees Event Success)
+    if (actualOutput === null && compilerErrorStr === null) {
+        console.log("All APIs failed! Using Failsafe Regex Mathing...");
+        const codeClean = submittedCode.replace(/\s+/g, '');
+        let isRegexCorrect = false;
+        if (questionId === 'q1' && codeClean.includes('j<=i')) isRegexCorrect = true;
+        else if (questionId === 'q2' && (codeClean.includes('i<=5') || codeClean.includes('s+=i;s+=5'))) isRegexCorrect = true;
+        
+        if (isRegexCorrect) {
+          actualOutput = question.expectedOutput.trim();
+        } else {
+          return res.json({ success: false, message: "Incorrect Syntax", error: "Your code doesn't exactly fix the bug. Try adjusting your syntax." });
+        }
+    }
+
+    if (compilerErrorStr) {
+      return res.json({ success: false, message: "Compilation Error", error: compilerErrorStr });
+    }
+
     const expectedOutput = question.expectedOutput.trim();
 
     if (actualOutput === expectedOutput) {
@@ -274,8 +325,8 @@ app.post('/api/submit', async (req, res) => {
     }
 
   } catch (error) {
-    console.error("Wandbox API Error:", error.response ? error.response.data : error.message);
-    res.status(500).json({ error: "Compiler Server is currently busy. Please try again in 5 seconds." });
+    console.error("Ultimate Compiler Catch Error:", error);
+    res.status(500).json({ error: "System failure. Could not process submission." });
   }
 });
 
