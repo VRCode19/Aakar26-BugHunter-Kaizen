@@ -44,6 +44,7 @@ const db = admin.firestore();
 let leaderboardCache = [];
 let approvalsCache = [];
 let historyCache = [];
+let teamsCache = {}; // Full team data indexed by teamName
 
 // Helper to sync cache from Firebase (Run once on startup)
 async function syncCacheFromFirebase() {
@@ -57,11 +58,15 @@ async function syncCacheFromFirebase() {
     teamsSnapshot.forEach(doc => {
       const data = doc.data();
       const teamName = doc.id;
+      
+      // Store full data in cache
+      teamsCache[teamName] = { ...data };
 
       if (data.hasLoggedIn) {
         leaderboard.push({
           name: teamName,
           score: data.score || 0,
+          bugsFixed: data.bugsFixed || 0,
           solved: (data.solvedQuestions && data.solvedQuestions.length) || 0,
           lastFixed: data.lastFixed ? data.lastFixed.toDate() : new Date(0)
         });
@@ -87,7 +92,7 @@ async function syncCacheFromFirebase() {
       }
     });
 
-    leaderboardCache = leaderboard.sort((a, b) => b.score - a.score || a.lastFixed - b.lastFixed);
+    leaderboardCache = leaderboard.sort((a, b) => b.bugsFixed - a.bugsFixed || a.lastFixed - b.lastFixed);
     approvalsCache = approvals;
     historyCache = history.sort((a, b) => (a.completionTime || 0) - (b.completionTime || 0));
     
@@ -271,30 +276,33 @@ app.post('/api/login', async (req, res) => {
 
   try {
     const teamRef = db.collection('teams').doc(teamName);
-    const doc = await teamRef.get();
+    let teamData = teamsCache[teamName];
 
-    if (!doc.exists) {
+    if (!teamData) {
       // 🌟 NEW TEAM REGISTRATION 🌟
       const newTeamData = {
         password: password,
         score: 0,
+        bugsFixed: 0,
         hasLoggedIn: true,
         solvedQuestions: [],
         lastFixed: admin.firestore.FieldValue.serverTimestamp()
       };
 
-      // Save to Firebase
+      // Save to Firebase & Cache
       await teamRef.set(newTeamData);
+      teamsCache[teamName] = { ...newTeamData };
 
-      // Update Cache
+      // Update Leaderboard Cache
       if (!leaderboardCache.find(t => t.name === teamName)) {
         leaderboardCache.push({
           name: teamName,
           score: 0,
+          bugsFixed: 0,
           solved: 0,
           lastFixed: new Date()
         });
-        leaderboardCache.sort((a, b) => b.score - a.score || a.lastFixed - b.lastFixed);
+        leaderboardCache.sort((a, b) => b.bugsFixed - a.bugsFixed || a.lastFixed - b.lastFixed);
       }
 
       // Broadcast to the Leaderboard
@@ -309,8 +317,6 @@ app.post('/api/login', async (req, res) => {
 
     } else {
       // 🔄 EXISTING TEAM LOGIN 🔄
-      const teamData = doc.data();
-
       if (teamData.password === password) {
         // Correct password
         const updateData = { hasLoggedIn: true };
@@ -318,16 +324,21 @@ app.post('/api/login', async (req, res) => {
           updateData.lastFixed = admin.firestore.FieldValue.serverTimestamp();
         }
         await teamRef.set(updateData, { merge: true });
+        
+        // Update Cache
+        teamsCache[teamName].hasLoggedIn = true;
+        if (updateData.lastFixed) teamsCache[teamName].lastFixed = new Date();
 
-        // Update Cache if missing (e.g. joined after server start)
+        // Update Leaderboard Cache if missing (e.g. joined after server start)
         if (!leaderboardCache.find(t => t.name === teamName)) {
           leaderboardCache.push({
             name: teamName,
             score: teamData.score || 0,
+            bugsFixed: teamData.bugsFixed || 0,
             solved: (teamData.solvedQuestions && teamData.solvedQuestions.length) || 0,
-            lastFixed: teamData.lastFixed ? teamData.lastFixed.toDate() : new Date()
+            lastFixed: teamData.lastFixed ? (teamData.lastFixed.toDate ? teamData.lastFixed.toDate() : teamData.lastFixed) : new Date()
           });
-          leaderboardCache.sort((a, b) => b.score - a.score || a.lastFixed - b.lastFixed);
+          leaderboardCache.sort((a, b) => b.bugsFixed - a.bugsFixed || a.lastFixed - b.lastFixed);
         }
 
         io.emit('team_joined', { teamName: teamName, score: teamData.score || 0 });
@@ -408,12 +419,11 @@ app.post('/api/submit', async (req, res) => {
   console.log(`\n📥 Submission Received: Team: ${teamName}, Question: ${questionId}`);
 
   try {
-    // Check Firebase FIRST to prevent double-dipping
-    const teamRef = db.collection('teams').doc(teamName);
-    const teamDoc = await teamRef.get();
+    // Check Cache FIRST to prevent reads
+    const teamData = teamsCache[teamName];
 
-    if (!teamDoc.exists) return res.status(404).json({ error: "Team not found" });
-    const teamData = teamDoc.data();
+    if (!teamData) return res.status(404).json({ error: "Team not found" });
+    const teamRef = db.collection('teams').doc(teamName);
 
     // 🛑 ANTI-CHEAT - Check if already solved
     if (teamData.solvedQuestions && teamData.solvedQuestions.includes(questionId)) {
@@ -443,6 +453,7 @@ app.post('/api/submit', async (req, res) => {
     }, { merge: true });
 
     // Update Cache
+    teamsCache[teamName].pendingApproval = pendingData;
     approvalsCache = approvalsCache.filter(a => a.teamName !== teamName);
     approvalsCache.push({ teamName, ...pendingData, submissionTime: new Date() });
 
@@ -475,14 +486,13 @@ app.get('/api/submission-history', (req, res) => {
 app.post('/api/approve', async (req, res) => {
   const { teamName, questionId, action } = req.body;
   try {
-    const teamRef = db.collection('teams').doc(teamName);
-    const doc = await teamRef.get();
-    if (!doc.exists) return res.status(404).json({ error: "Team not found" });
+    const teamData = teamsCache[teamName];
+    if (!teamData) return res.status(404).json({ error: "Team not found" });
 
-    const teamData = doc.data();
     if (!teamData.pendingApproval || teamData.pendingApproval.questionId !== questionId) {
       return res.status(400).json({ error: "No pending approval for this question" });
     }
+    const teamRef = db.collection('teams').doc(teamName);
 
     if (action === 'accept') {
       const question = questionBank[questionId];
@@ -494,24 +504,33 @@ app.post('/api/approve', async (req, res) => {
 
       await teamRef.set({
         score: admin.firestore.FieldValue.increment(question.points),
+        bugsFixed: admin.firestore.FieldValue.increment(1),
         solvedQuestions: admin.firestore.FieldValue.arrayUnion(questionId),
         completionTimes: completionTimes,
         lastFixed: submissionTimestamp,
         pendingApproval: admin.firestore.FieldValue.delete()
       }, { merge: true });
 
-      // Update Caches locally instead of re-reading everything
+      // Update Caches locally
+      teamsCache[teamName].score = (teamsCache[teamName].score || 0) + question.points;
+      teamsCache[teamName].bugsFixed = (teamsCache[teamName].bugsFixed || 0) + 1;
+      teamsCache[teamName].solvedQuestions = [...(teamsCache[teamName].solvedQuestions || []), questionId];
+      teamsCache[teamName].completionTimes = completionTimes;
+      teamsCache[teamName].lastFixed = new Date();
+      delete teamsCache[teamName].pendingApproval;
+
       leaderboardCache = leaderboardCache.map(team => {
         if (team.name === teamName) {
           return {
             ...team,
             score: (team.score || 0) + question.points,
+            bugsFixed: (team.bugsFixed || 0) + 1,
             solved: (team.solved || 0) + 1,
             lastFixed: new Date()
           };
         }
         return team;
-      }).sort((a, b) => b.score - a.score || a.lastFixed - b.lastFixed);
+      }).sort((a, b) => b.bugsFixed - a.bugsFixed || a.lastFixed - b.lastFixed);
 
       approvalsCache = approvalsCache.filter(a => a.teamName !== teamName);
       
@@ -536,6 +555,7 @@ app.post('/api/approve', async (req, res) => {
       await teamRef.set({
         pendingApproval: admin.firestore.FieldValue.delete()
       }, { merge: true });
+      delete teamsCache[teamName].pendingApproval;
       approvalsCache = approvalsCache.filter(a => a.teamName !== teamName);
       io.emit('approval_status', { teamName, status: 'rejected', message: 'Admin rejected your solution!' });
     }
@@ -568,6 +588,16 @@ io.on('connection', (socket) => {
       await teamRef.set({
         score: admin.firestore.FieldValue.increment(-5)
       }, { merge: true });
+
+      // Update Cache
+      if (teamsCache[data.teamName]) {
+        teamsCache[data.teamName].score = (teamsCache[data.teamName].score || 0) - 5;
+        leaderboardCache = leaderboardCache.map(t => {
+          if (t.name === data.teamName) return { ...t, score: t.score - 5 };
+          return t;
+        }).sort((a, b) => b.bugsFixed - a.bugsFixed || a.lastFixed - b.lastFixed);
+        io.emit('leaderboard_update', { leaderboard: leaderboardCache.slice(0, 50) });
+      }
 
       // Tell the big screen to flash a penalty warning
       io.emit('score_updated', {
