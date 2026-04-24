@@ -66,7 +66,7 @@ for(let i = 3; i <= 10; i++) {
   };
 }
 
-// 6. Submit Rate Limiter (Protects Piston API)
+// 6. Submit Rate Limiter
 const rateLimit = require('express-rate-limit');
 const submitLimiter = rateLimit({
   windowMs: 5 * 1000, 
@@ -89,6 +89,58 @@ app.set('io', io);
 // ==========================================
 //                 API ROUTES
 // ==========================================
+
+// Helper for compiling code using Godbolt API
+async function executeWithGodbolt(code, stdinStr) {
+  try {
+    const data = {
+      source: code,
+      compiler: "cg132",
+      options: {
+        userArguments: "",
+        executeParameters: { args: [], stdin: stdinStr || "" },
+        compilerOptions: { executorRequest: true },
+        filters: { execute: true },
+        tools: []
+      },
+      lang: "c",
+      allowStoreCodeDebug: true
+    };
+    const config = {
+      method: 'post',
+      url: 'https://godbolt.org/api/compiler/cg132/compile',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      data: data,
+      timeout: 15000
+    };
+    const res = await axios(config);
+    const d = res.data;
+
+    // Check if build failed
+    if (d.buildResult && d.buildResult.code !== 0) {
+      const buildErr = (d.buildResult.stderr || []).map(item => item.text).join('\n');
+      return { actualOutput: null, compilerErrorStr: buildErr || "Compilation Error" };
+    }
+
+    // Check if execution happened
+    if (d.didExecute) {
+      const outArr = (d.stdout || []).map(item => item.text).join('\n');
+      const errArr = (d.stderr || []).map(item => item.text).join('\n');
+      // If there's stderr but also stdout, include both
+      if (errArr && !outArr) {
+        return { actualOutput: null, compilerErrorStr: errArr };
+      }
+      return { actualOutput: outArr, compilerErrorStr: null };
+    } else {
+      // Build succeeded but didn't execute (shouldn't happen with executorRequest)
+      const buildStderr = (d.buildResult?.stderr || []).map(item => item.text).join('\n');
+      return { actualOutput: null, compilerErrorStr: buildStderr || "Build succeeded but execution failed" };
+    }
+  } catch (error) {
+    console.error("Godbolt failed:", error.message);
+    return { actualOutput: null, compilerErrorStr: null }; // Pass through to failsafe
+  }
+}
 
 app.get('/', (req, res) => {
   res.send('BugHunter Backend is live on Render! 🔥');
@@ -203,7 +255,44 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
-// SUBMIT ROUTE (With Piston & Anti-Cheat)
+// RUN ROUTE (Compile & Execute via Godbolt)
+app.post('/api/run', async (req, res) => {
+  const { teamName, questionId, submittedCode } = req.body;
+  
+  if (!teamName || !questionId || !submittedCode) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  const question = questionBank[questionId];
+  if (!question) return res.status(404).json({ error: "Question not found" });
+
+  try {
+    let actualOutput = null;
+    let compilerErrorStr = null;
+
+    const inputToUse = req.body.customInput !== undefined ? req.body.customInput : question.testInput;
+    const gbResult = await executeWithGodbolt(submittedCode, inputToUse);
+    if (gbResult.actualOutput !== null || gbResult.compilerErrorStr !== null) {
+      actualOutput = gbResult.actualOutput;
+      compilerErrorStr = gbResult.compilerErrorStr;
+    }
+
+    if (compilerErrorStr) {
+      return res.json({ success: true, message: "Compilation Error", output: compilerErrorStr });
+    }
+
+    if (actualOutput !== null) {
+      return res.json({ success: true, message: "Execution Complete", output: actualOutput });
+    } else {
+      return res.json({ success: false, error: "Execution failed across all backends. Please try again." });
+    }
+  } catch (error) {
+    console.error("Run Error:", error);
+    res.status(500).json({ error: "System failure. Could not run execution." });
+  }
+});
+
+// SUBMIT ROUTE (Compile, Validate & Submit for Approval)
 app.post('/api/submit', async (req, res) => {
   const { teamName, questionId, submittedCode } = req.body;
   
@@ -230,55 +319,14 @@ app.post('/api/submit', async (req, res) => {
       });
     }
 
-    // =========================================
-    // THE ULTIMATE BULLETPROOF COMPILER FALLBACK
-    // =========================================
+    // Compile & execute via Godbolt
     let actualOutput = null;
     let compilerErrorStr = null;
 
-    // API 1: Wandbox
-    if (actualOutput === null && compilerErrorStr === null) {
-      try {
-        const payloadWandbox = { compiler: 'gcc-head-c', code: submittedCode };
-        if (question.testInput) payloadWandbox.stdin = question.testInput;
-        
-        const wRes = await axios.post('https://wandbox.org/api/compile.json', payloadWandbox, { timeout: 8000 });
-        if (wRes.data.status !== '0' && wRes.data.compiler_error) compilerErrorStr = wRes.data.compiler_error;
-        else actualOutput = wRes.data.program_output ? wRes.data.program_output.trim() : "";
-      } catch (e) {
-        console.error("Wandbox failed:", e.message);
-      }
-    }
-
-    // API 2: Judge0
-    if (actualOutput === null && compilerErrorStr === null) {
-      try {
-        const payloadJudge0 = {
-          source_code: Buffer.from(submittedCode).toString("base64"),
-          language_id: 50 // C
-        };
-        if (question.testInput) payloadJudge0.stdin = Buffer.from(question.testInput).toString("base64");
-        
-        const jRes = await axios.post('https://ce.judge0.com/submissions?base64_encoded=true&wait=true', payloadJudge0, { timeout: 8000 });
-        if (jRes.data.status.id === 6) compilerErrorStr = jRes.data.compile_output ? Buffer.from(jRes.data.compile_output, 'base64').toString('utf8') : "Compile error";
-        else actualOutput = jRes.data.stdout ? Buffer.from(jRes.data.stdout, 'base64').toString('utf8').trim() : "";
-      } catch (e) {
-        console.error("Judge0 failed:", e.message);
-      }
-    }
-
-    // API 3: Paiza
-    if (actualOutput === null && compilerErrorStr === null) {
-      try {
-        const pRes1 = await axios.post('https://api.paiza.io/runners/create', { source_code: submittedCode, language: 'c', input: question.testInput || "" }, { timeout: 5000 });
-        const pId = pRes1.data.id;
-        await new Promise(r => setTimeout(r, 2000));
-        const pRes2 = await axios.get(`https://api.paiza.io/runners/get_details?id=${pId}`, { timeout: 5000 });
-        if (pRes2.data.build_result === 'failure') compilerErrorStr = pRes2.data.build_stderr;
-        else actualOutput = pRes2.data.stdout ? pRes2.data.stdout.trim() : "";
-      } catch (e) {
-        console.error("Paiza failed:", e.message);
-      }
+    const gbResult = await executeWithGodbolt(submittedCode, question.testInput);
+    if (gbResult.actualOutput !== null || gbResult.compilerErrorStr !== null) {
+      actualOutput = gbResult.actualOutput;
+      compilerErrorStr = gbResult.compilerErrorStr;
     }
 
     // API 4: Failsafe Regex Match (Guarantees Event Success)
@@ -302,7 +350,10 @@ app.post('/api/submit', async (req, res) => {
 
     const expectedOutput = question.expectedOutput.trim();
 
-    if (actualOutput === expectedOutput) {
+    const cleanOut = actualOutput ? actualOutput.replace(/\s+/g, '') : '';
+    const cleanExp = expectedOutput ? expectedOutput.replace(/\s+/g, '') : '';
+
+    if (cleanOut === cleanExp) {
       // 🎉 Create Pending Approval instead of Auto-Updating Database
       await teamRef.set({
         pendingApproval: {
