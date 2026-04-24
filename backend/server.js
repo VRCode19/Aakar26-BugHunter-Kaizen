@@ -230,59 +230,51 @@ app.post('/api/submit', async (req, res) => {
       });
     }
 
-    // Call Judge0 API
+    // Call Wandbox API
     const payload = {
-      source_code: Buffer.from(submittedCode).toString("base64"),
-      language_id: 50 // C (GCC 9.2.0)
+      compiler: 'gcc-head-c',
+      code: submittedCode
     };
     
     if (question.testInput) {
-      payload.stdin = Buffer.from(question.testInput).toString("base64");
+      payload.stdin = question.testInput;
     }
 
-    const judge0Response = await axios.post('https://ce.judge0.com/submissions?base64_encoded=true&wait=true', payload);
+    const wandboxResponse = await axios.post('https://wandbox.org/api/compile.json', payload);
 
-    const { stdout, compile_output, status } = judge0Response.data;
+    const { status, compiler_error, program_output } = wandboxResponse.data;
 
-    if (status.id === 6) {
-      const decodedError = compile_output ? Buffer.from(compile_output, 'base64').toString('utf8') : "Unknown Compile Error";
-      return res.json({ success: false, message: "Compilation Error", error: decodedError });
+    if (status !== '0' && compiler_error) {
+      return res.json({ success: false, message: "Compilation Error", error: compiler_error });
     }
 
-    if (status.id === 3) {
-      const actualOutput = stdout ? Buffer.from(stdout, 'base64').toString('utf8').trim() : ""; 
-      const expectedOutput = question.expectedOutput.trim();
+    const actualOutput = program_output ? program_output.trim() : ""; 
+    const expectedOutput = question.expectedOutput.trim();
 
-      if (actualOutput === expectedOutput) {
-        
-        // 🎉 Create Pending Approval instead of Auto-Updating Database
-        await teamRef.set({
-          pendingApproval: {
-            questionId: questionId,
-            code: submittedCode,
-            timestamp: admin.firestore.FieldValue.serverTimestamp()
-          }
-        }, { merge: true });
+    if (actualOutput === expectedOutput) {
+      // 🎉 Create Pending Approval instead of Auto-Updating Database
+      await teamRef.set({
+        pendingApproval: {
+          questionId: questionId,
+          code: submittedCode,
+          timestamp: admin.firestore.FieldValue.serverTimestamp()
+        }
+      }, { merge: true });
 
-        io.emit('new_approval_request', { teamName, questionId });
-        
-        return res.json({ success: true, message: "Code output is correct! Waiting for Admin approval..." });
-      } else {
-        const actualOutputText = actualOutput.substring(0, 100);
-        return res.json({ 
-          success: false, 
-          message: "Incorrect Output", 
-          error: `Output did not match expected result.\nReceived: '${actualOutputText}'` 
-        });
-      }
-    } else if (status.id > 6) {
-       return res.json({ success: false, message: "Runtime Error", error: status.description });
+      io.emit('new_approval_request', { teamName, questionId });
+      
+      return res.json({ success: true, message: "Code output is correct! Waiting for Admin approval..." });
+    } else {
+      const actualOutputText = actualOutput.substring(0, 100);
+      return res.json({ 
+        success: false, 
+        message: "Incorrect Output", 
+        error: `Output did not match expected result.\nReceived: '${actualOutputText}'` 
+      });
     }
-    
-    res.status(500).json({ error: "Execution failed or timed out." });
 
   } catch (error) {
-    console.error("Judge0 API Error:", error.response ? error.response.data : error.message);
+    console.error("Wandbox API Error:", error.response ? error.response.data : error.message);
     res.status(500).json({ error: "Compiler Server is currently busy. Please try again in 5 seconds." });
   }
 });
