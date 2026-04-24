@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://aakar26-bughunter-kaizen.onrender.com/',
+        target: 'http://localhost:5000',
         changeOrigin: true
       }
     }
