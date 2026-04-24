@@ -661,14 +661,14 @@ function App() {
     try {
       const response = await axios.post(`${BACKEND_URL}/api/submit`, {
         teamName: session.id,
-        questionId: currentQuestionId, // Use currently selected question
+        questionId: currentQuestionId,
         submittedCode: editedCode
       })
 
       if (response.data.success) {
-        setConsoleOutput(`Success! Output matches expected.\n${response.data.message}`)
+        setConsoleOutput(`Success: ${response.data.message}`)
       } else {
-        setConsoleOutput(`Failed: ${response.data.message}\n${response.data.error || ''}`)
+        setConsoleOutput(`${response.data.message || 'Failed'}\n${response.data.error || ''}`)
       }
     } catch (error) {
       setConsoleOutput(error.response?.data?.error || 'Submission failed')
