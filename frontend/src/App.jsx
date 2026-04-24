@@ -88,8 +88,10 @@ function App() {
   const [editedCode, setEditedCode] = useState(QUESTIONS['q1'].starterCode)
   
   const [consoleOutput, setConsoleOutput] = useState(
-    'Compiler panel reserved. Connect this to backend later.',
+    'System panel reserved. Submit code to see output.',
   )
+  const [runOutput, setRunOutput] = useState('Code output will appear here...')
+  const [customInput, setCustomInput] = useState('')
   const [visibilityWarnings, setVisibilityWarnings] = useState({})
   const [fullscreenWarnings, setFullscreenWarnings] = useState({})
   const [disqualifiedTeams, setDisqualifiedTeams] = useState([])
@@ -357,6 +359,33 @@ function App() {
     }
   }
 
+  const handleRunCode = async () => {
+    setRunOutput('Running code...')
+    try {
+      const response = await axios.post(`${BACKEND_URL}/api/run`, {
+        teamName: session.id,
+        questionId: currentQuestionId,
+        submittedCode: editedCode,
+        customInput: customInput
+      })
+
+      if (response.data.success) {
+        setRunOutput(response.data.output || 'No output')
+        if (response.data.message === 'Compilation Error') {
+           setConsoleOutput('Compilation Error occurred. See program output.')
+        } else {
+           setConsoleOutput('Code execution completed successfully.')
+        }
+      } else {
+        setRunOutput(`Failed: ${response.data.error || ''}`)
+        setConsoleOutput('Execution failed.')
+      }
+    } catch (error) {
+      setRunOutput(error.response?.data?.error || 'Run failed')
+      setConsoleOutput('Error occurred while running code.')
+    }
+  }
+
   const handleApprove = async (teamName, questionId, action) => {
     try {
       await axios.post(`${BACKEND_URL}/api/approve`, {
@@ -372,7 +401,8 @@ function App() {
     const newId = e.target.value
     setCurrentQuestionId(newId)
     setEditedCode(QUESTIONS[newId].starterCode)
-    setConsoleOutput('Compiler panel reserved. Submit code to see output.')
+    setConsoleOutput('System panel reserved. Submit code to see output.')
+    setRunOutput('Code output will appear here...')
   }
 
   const particles = [
@@ -568,12 +598,31 @@ function App() {
                         onCut={(e) => e.preventDefault()}
                         onPaste={(e) => e.preventDefault()}
                       />
-                      <div className="editor-actions">
-                        <button type="button" className="login-btn submit-btn" onClick={handleMockSubmit}>
+                      <div className="section-title" style={{ marginTop: '14px', fontSize: '0.75rem', color: '#ea1717' }}>Custom Test Input (Optional)</div>
+                      <textarea
+                        className="code-editor"
+                        style={{ minHeight: '60px', marginTop: '8px', padding: '10px' }}
+                        value={customInput}
+                        onChange={(e) => setCustomInput(e.target.value)}
+                        placeholder="Enter custom input for testing..."
+                        spellCheck="false"
+                      />
+                      <div className="editor-actions" style={{ gap: '10px', marginTop: '14px' }}>
+                        <button type="button" className="login-btn ghost-btn" onClick={handleRunCode} style={{ width: 'auto' }}>
+                          <span>Run Code</span>
+                        </button>
+                        <button type="button" className="login-btn submit-btn" onClick={handleMockSubmit} style={{ width: 'auto' }}>
                           <span>Submit Fix</span>
                         </button>
                       </div>
-                      <pre className="console-output">{consoleOutput}</pre>
+                      <div className="output-section">
+                        <div className="section-title" style={{ marginTop: '14px', fontSize: '0.75rem', color: '#ea1717' }}>Program Output</div>
+                        <pre className="console-output" style={{ marginTop: '8px', minHeight: '80px', color: '#f0d3d3' }}>{runOutput}</pre>
+                      </div>
+                      <div className="output-section">
+                        <div className="section-title" style={{ marginTop: '14px', fontSize: '0.75rem', color: '#ea1717' }}>System Console</div>
+                        <pre className="console-output" style={{ marginTop: '8px', minHeight: '60px' }}>{consoleOutput}</pre>
+                      </div>
                     </section>
                   </>
                 ) : (
