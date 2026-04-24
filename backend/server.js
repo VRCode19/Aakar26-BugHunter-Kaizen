@@ -380,6 +380,11 @@ app.post('/api/submit', async (req, res) => {
       compilerErrorStr = gbResult.compilerErrorStr;
     }
 
+    // Trim actual output to match expected output formatting
+    if (actualOutput !== null) {
+      actualOutput = actualOutput.trim();
+    }
+
     // API 4: Failsafe Regex Match (Guarantees Event Success)
     if (actualOutput === null && compilerErrorStr === null) {
       console.log("All APIs failed! Using Failsafe Regex Mathing...");
