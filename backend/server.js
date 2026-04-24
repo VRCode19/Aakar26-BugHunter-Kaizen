@@ -230,27 +230,27 @@ app.post('/api/submit', async (req, res) => {
       });
     }
 
-    // Call Piston API
+    // Call Judge0 API
     const payload = {
-      language: 'c',
-      version: '*', 
-      files: [{ name: "main.c", content: submittedCode }]
+      source_code: Buffer.from(submittedCode).toString("base64"),
+      language_id: 50 // C (GCC 9.2.0)
     };
     
     if (question.testInput) {
-      payload.stdin = question.testInput;
+      payload.stdin = Buffer.from(question.testInput).toString("base64");
     }
 
-    const pistonResponse = await axios.post('https://emkc.org/api/v2/piston/execute', payload);
+    const judge0Response = await axios.post('https://ce.judge0.com/submissions?base64_encoded=true&wait=true', payload);
 
-    const { run, compile } = pistonResponse.data;
+    const { stdout, compile_output, status } = judge0Response.data;
 
-    if (compile && compile.code !== 0) {
-      return res.json({ success: false, message: "Compilation Error", error: compile.stderr });
+    if (status.id === 6) {
+      const decodedError = compile_output ? Buffer.from(compile_output, 'base64').toString('utf8') : "Unknown Compile Error";
+      return res.json({ success: false, message: "Compilation Error", error: decodedError });
     }
 
-    if (run && run.stdout !== undefined) {
-      const actualOutput = run.stdout.trim(); 
+    if (status.id === 3) {
+      const actualOutput = stdout ? Buffer.from(stdout, 'base64').toString('utf8').trim() : ""; 
       const expectedOutput = question.expectedOutput.trim();
 
       if (actualOutput === expectedOutput) {
@@ -268,18 +268,22 @@ app.post('/api/submit', async (req, res) => {
         
         return res.json({ success: true, message: "Code output is correct! Waiting for Admin approval..." });
       } else {
+        const actualOutputText = actualOutput.substring(0, 100);
         return res.json({ 
           success: false, 
           message: "Incorrect Output", 
-          error: `Expected: '${expectedOutput}', but got: '${actualOutput}'` 
+          error: `Output did not match expected result.\nReceived: '${actualOutputText}'` 
         });
       }
+    } else if (status.id > 6) {
+       return res.json({ success: false, message: "Runtime Error", error: status.description });
     }
-    res.status(500).json({ error: "Execution failed. No output returned." });
+    
+    res.status(500).json({ error: "Execution failed or timed out." });
 
   } catch (error) {
-    console.error("Piston API Error:", error.response ? error.response.data : error.message);
-    res.status(500).json({ error: "Compiler Server is busy. Try again in 5 seconds." });
+    console.error("Judge0 API Error:", error.response ? error.response.data : error.message);
+    res.status(500).json({ error: "Compiler Server is currently busy. Please try again in 5 seconds." });
   }
 });
 
