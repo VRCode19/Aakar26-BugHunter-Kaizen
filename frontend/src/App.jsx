@@ -67,6 +67,7 @@ function App() {
   const [session, setSession] = useState(null)
   const [timeLeft, setTimeLeft] = useState(DEFAULT_DURATION_MINUTES * 60)
   const [lockdownTimeLeft, setLockdownTimeLeft] = useState(0)
+  const [eventEnded, setEventEnded] = useState(false)
   
   const [currentQuestionId, setCurrentQuestionId] = useState('q1')
   const [editedCode, setEditedCode] = useState(QUESTIONS['q1'].starterCode)
@@ -79,7 +80,19 @@ function App() {
   const [disqualifiedTeams, setDisqualifiedTeams] = useState([])
   const [systemWarning, setSystemWarning] = useState('')
   const [leaderboard, setLeaderboard] = useState([])
+  const [approvals, setApprovals] = useState([])
   const [socket, setSocket] = useState(null)
+
+  const fetchApprovals = async () => {
+    try {
+      const response = await axios.get(`${BACKEND_URL}/api/approvals`)
+      if (response.data.success) {
+        setApprovals(response.data.approvals)
+      }
+    } catch (error) {
+      console.error('Error fetching approvals:', error)
+    }
+  }
 
   // Initialize Socket.io and Leaderboard
   const fetchLeaderboard = async () => {
@@ -89,8 +102,7 @@ function App() {
         setLeaderboard(response.data.leaderboard.map(t => ({
           id: t.name,
           name: t.name,
-          points: t.score,
-          solved: 0
+          solved: t.solved
         })))
       }
     } catch (error) {
@@ -100,6 +112,7 @@ function App() {
 
   useEffect(() => {
     fetchLeaderboard()
+    fetchApprovals()
     const newSocket = io(BACKEND_URL)
     setSocket(newSocket)
 
@@ -112,8 +125,31 @@ function App() {
       fetchLeaderboard()
     })
 
+    newSocket.on('event_ended', () => {
+      setEventEnded(true)
+    })
+
+    newSocket.on('new_approval_request', () => {
+      fetchApprovals()
+    })
+
     return () => newSocket.disconnect()
   }, [])
+
+  useEffect(() => {
+    if (!socket || !session) return;
+    
+    const handleApprovalStatus = (data) => {
+      fetchApprovals()
+      fetchLeaderboard()
+      if (session.id === data.teamName) {
+         setConsoleOutput(`Approval Status: ${data.status.toUpperCase()}\n${data.message}`)
+      }
+    }
+    
+    socket.on('approval_status', handleApprovalStatus)
+    return () => socket.off('approval_status', handleApprovalStatus)
+  }, [socket, session])
 
   useEffect(() => {
     const loaderTimer = setTimeout(() => {
@@ -208,18 +244,10 @@ function App() {
 
   const visibleLeaderboard = useMemo(() => {
     const filtered = leaderboard.filter((team) => !disqualifiedTeams.includes(team.id))
-    return filtered
-      .sort((a, b) => {
-        if (b.points !== a.points) {
-          return b.points - a.points
-        }
-
-        return b.solved - a.solved
-      })
-      .map((team, index) => ({
-        ...team,
-        rank: index + 1,
-      }))
+    return filtered.map((team, index) => ({
+      ...team,
+      rank: index + 1,
+    }))
   }, [leaderboard, disqualifiedTeams])
 
   const handleTeamLogin = async () => {
@@ -254,8 +282,8 @@ function App() {
   }
 
   const handleAdminLogin = () => {
-    if (!adminId.trim() || !adminPassword.trim()) {
-      setLoginErr('! Enter Admin ID and Password.')
+    if (adminId.trim() !== 'bughunter2026' || adminPassword.trim() !== 'vrishab&pratham') {
+      setLoginErr('! Incorrect Admin ID or Password.')
       return
     }
 
@@ -301,13 +329,23 @@ function App() {
       })
 
       if (response.data.success) {
-        setConsoleOutput(`Success! Bug Fixed!\n${response.data.message}`)
-        fetchLeaderboard()
+        setConsoleOutput(`Success! Output matches expected.\n${response.data.message}`)
       } else {
         setConsoleOutput(`Failed: ${response.data.message}\n${response.data.error || ''}`)
       }
     } catch (error) {
       setConsoleOutput(error.response?.data?.error || 'Submission failed')
+    }
+  }
+
+  const handleApprove = async (teamName, questionId, action) => {
+    try {
+      await axios.post(`${BACKEND_URL}/api/approve`, {
+        teamName, questionId, action
+      })
+      fetchApprovals()
+    } catch (error) {
+      console.error('Error approving:', error)
     }
   }
 
@@ -477,42 +515,75 @@ function App() {
 
             <div className="main-grid">
               <div className="workspace-column">
-                <section className="panel question-panel">
-                  <div className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>Question</span>
-                    <select 
-                      value={currentQuestionId} 
-                      onChange={handleQuestionChange}
-                      style={{ background: '#111', color: '#ea1717', border: '1px solid #7d1717', padding: '4px', fontFamily: 'monospace', outline: 'none' }}
-                    >
-                      {Object.values(QUESTIONS).map(q => (
-                        <option key={q.id} value={q.id}>{q.title}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <textarea
-                    className="question-area"
-                    value={QUESTIONS[currentQuestionId].text}
-                    readOnly
-                    spellCheck="false"
-                  />
-                </section>
+                {session.role === 'team' ? (
+                  <>
+                    <section className="panel question-panel">
+                      <div className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Question</span>
+                        <select 
+                          value={currentQuestionId} 
+                          onChange={handleQuestionChange}
+                          style={{ background: '#111', color: '#ea1717', border: '1px solid #7d1717', padding: '4px', fontFamily: 'monospace', outline: 'none' }}
+                        >
+                          {Object.values(QUESTIONS).map(q => (
+                            <option key={q.id} value={q.id}>{q.title}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <textarea
+                        className="question-area"
+                        value={QUESTIONS[currentQuestionId].text}
+                        readOnly
+                        spellCheck="false"
+                      />
+                    </section>
 
-                <section className="panel editor-panel">
-                  <div className="section-title">Code Editor</div>
-                  <textarea
-                    className="code-editor"
-                    value={editedCode}
-                    onChange={(event) => setEditedCode(event.target.value)}
-                    spellCheck="false"
-                  />
-                  <div className="editor-actions">
-                    <button type="button" className="login-btn submit-btn" onClick={handleMockSubmit}>
-                      <span>Submit Fix</span>
-                    </button>
-                  </div>
-                  <pre className="console-output">{consoleOutput}</pre>
-                </section>
+                    <section className="panel editor-panel">
+                      <div className="section-title">Code Editor</div>
+                      <textarea
+                        className="code-editor"
+                        value={editedCode}
+                        onChange={(event) => setEditedCode(event.target.value)}
+                        spellCheck="false"
+                        onCopy={(e) => e.preventDefault()}
+                        onCut={(e) => e.preventDefault()}
+                        onPaste={(e) => e.preventDefault()}
+                      />
+                      <div className="editor-actions">
+                        <button type="button" className="login-btn submit-btn" onClick={handleMockSubmit}>
+                          <span>Submit Fix</span>
+                        </button>
+                      </div>
+                      <pre className="console-output">{consoleOutput}</pre>
+                    </section>
+                  </>
+                ) : (
+                  <section className="panel approvals-panel" style={{height: '100%', minHeight: '600px'}}>
+                    <div className="section-title">Pending Submissions</div>
+                    <div className="approvals-list" style={{display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '15px'}}>
+                      {approvals.length === 0 ? (
+                        <div className="empty-state">No pending submissions.</div>
+                      ) : (
+                        approvals.map((appr) => (
+                          <div key={appr.teamName + appr.questionId} className="admin-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
+                            <div style={{marginBottom: '10px'}}>
+                              <strong style={{fontSize: '1.1rem'}}>{appr.teamName}</strong> submitted <span style={{color: 'gold'}}>{QUESTIONS[appr.questionId]?.title || appr.questionId}</span>
+                            </div>
+                            <textarea
+                              readOnly
+                              value={appr.code}
+                              style={{width: '100%', minHeight: '150px', background: '#000', color: '#fff', fontFamily: 'monospace', padding: '10px', marginBottom: '10px', border: '1px solid rgba(180, 20, 20, 0.5)', outline: 'none'}}
+                            />
+                            <div style={{display: 'flex', gap: '10px'}}>
+                              <button className="login-btn submit-btn" onClick={() => handleApprove(appr.teamName, appr.questionId, 'accept')} style={{padding: '8px 16px', background: '#1a5c1a', color: '#fff', borderColor: '#1a5c1a'}}>Accept</button>
+                              <button className="ghost-btn danger-btn" onClick={() => handleApprove(appr.teamName, appr.questionId, 'reject')} style={{padding: '8px 16px'}}>Reject</button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </section>
+                )}
               </div>
 
               <div className="side-column">
@@ -522,7 +593,6 @@ function App() {
                     <span>Rank</span>
                     <span>Team</span>
                     <span>Solved</span>
-                    <span>Points</span>
                   </div>
 
                   <div className="scoreboard-list">
@@ -537,7 +607,6 @@ function App() {
                           </span>
                           <strong>{team.name}</strong>
                           <span>{team.solved}</span>
-                          <span>{team.points}</span>
                         </div>
                       ))
                     )}
@@ -546,7 +615,10 @@ function App() {
 
                 {session.role === 'admin' && (
                   <section className="panel admin-panel">
-                    <div className="section-title">Admin Monitor</div>
+                    <div className="section-title" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                      <span>Admin Monitor</span>
+                      <button type="button" className="ghost-btn danger-btn" onClick={() => socket.emit('end_event')} style={{padding: '6px 12px', fontSize: '0.7rem'}}>End Event</button>
+                    </div>
                     <div className="admin-list">
                       {leaderboard.length === 0 ? (
                         <div className="empty-state">No teams logged in yet.</div>
@@ -560,6 +632,7 @@ function App() {
                             <div key={team.id} className="admin-row">
                               <div className="admin-row-main">
                                 <strong>{team.name}</strong>
+                                <span>Problem: {team.solved + 1}</span>
                                 <span>Tab: {tabCount}</span>
                                 <span>Fullscreen: {fullscreenCount}</span>
                                 <span>Status: {removed ? 'Disqualified' : 'Active'}</span>
@@ -606,6 +679,23 @@ function App() {
             <h2>SYSTEM LOCKDOWN</h2>
             <p>Multiple tab switches detected. Please wait.</p>
             <div className="lockdown-timer">{lockdownTimeLeft}s</div>
+          </div>
+        </div>
+      )}
+      {eventEnded && (
+        <div className="lockdown-overlay" style={{background: 'rgba(5, 0, 0, 0.98)'}}>
+          <div className="celebration-content" style={{textAlign: 'center'}}>
+            <h1 className="event-name" style={{fontSize: '3.5rem', marginBottom: '20px'}}>EVENT ENDED</h1>
+            <h2 className="section-title" style={{fontSize: '1.5rem', marginBottom: '40px', color: 'gold'}}>Top Bug Hunters</h2>
+            <div className="winners-podium" style={{display: 'flex', gap: '20px', justifyContent: 'center', alignItems: 'flex-end'}}>
+              {visibleLeaderboard.slice(0, 3).map(team => (
+                <div key={team.id} className={`podium-rank rank-${team.rank}`} style={{padding: '30px', borderRadius: '15px', background: 'rgba(20, 5, 5, 0.9)', minWidth: '200px', border: '1px solid'}}>
+                  <div className="crown" style={{fontSize: '3rem', marginBottom: '15px'}}>{team.rank === 1 ? '👑' : ''}</div>
+                  <h3 style={{fontSize: '2rem', color: '#fff'}}>{team.name}</h3>
+                  <p style={{fontFamily: 'monospace', color: '#ccc', marginTop: '15px', fontSize: '1.2rem'}}>Solved: {team.solved}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
