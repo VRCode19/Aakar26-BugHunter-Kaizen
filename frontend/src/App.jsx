@@ -133,7 +133,11 @@ function App() {
 
     newSocket.on('score_updated', (data) => {
       fetchLeaderboard()
-      if (data && data.message) setSystemWarning(data.message)
+      if (data && data.message) {
+        // If the user is a team, only show warnings addressed to them or global non-penalty messages
+        // Or we just let setSystemWarning update, but let's just show it.
+        setSystemWarning(data.message)
+      }
     })
 
     newSocket.on('team_joined', () => {
@@ -632,7 +636,7 @@ function App() {
                   <section className="panel admin-panel">
                     <div className="section-title" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                       <span>Admin Monitor</span>
-                      <button type="button" className="ghost-btn danger-btn" onClick={() => socket.emit('end_event')} style={{padding: '6px 12px', fontSize: '0.7rem'}}>End Event</button>
+                      <button type="button" className="ghost-btn danger-btn" onClick={() => socket && socket.emit('end_event')} style={{padding: '6px 12px', fontSize: '0.7rem'}}>End Event</button>
                     </div>
                     <div className="admin-list">
                       {leaderboard.length === 0 ? (

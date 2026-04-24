@@ -404,6 +404,7 @@ io.on('connection', (socket) => {
   // 🚨 ANTI-CHEAT: Penalty for switching tabs
   socket.on('tab_switch_violation', async (data) => {
     if (!data || !data.teamName) return;
+    if (data.teamName === 'bughunter2026') return; // EXEMPT ADMIN
     
     console.log(`🚨 CHEATING DETECTED: ${data.teamName} tabbed out!`);
     
@@ -419,7 +420,7 @@ io.on('connection', (socket) => {
       io.emit('score_updated', { 
         teamName: data.teamName, 
         points: -5,
-        message: "Penalty applied for switching tabs!"
+        message: `Penalty applied to ${data.teamName} for switching tabs!`
       });
     } catch (error) {
       console.error("Error applying penalty:", error);
