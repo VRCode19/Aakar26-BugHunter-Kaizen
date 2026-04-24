@@ -576,7 +576,9 @@ function App() {
     const filtered = leaderboard.filter((team) => !disqualifiedTeams.includes(team.id))
     return filtered
       .sort((a, b) => {
-        if (b.solved !== a.solved) return b.solved - a.solved
+        const aFixed = a.bugsFixed || a.solved || 0;
+        const bFixed = b.bugsFixed || b.solved || 0;
+        if (bFixed !== aFixed) return bFixed - aFixed
         return (new Date(a.lastFixed) || 0) - (new Date(b.lastFixed) || 0)
       })
       .map((team, index) => ({

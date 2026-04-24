@@ -66,6 +66,7 @@ async function syncCacheFromFirebase() {
         leaderboard.push({
           name: teamName,
           score: data.score || 0,
+          bugsFixed: data.bugsFixed || 0,
           solved: (data.solvedQuestions && data.solvedQuestions.length) || 0,
           lastFixed: data.lastFixed ? data.lastFixed.toDate() : new Date(0)
         });
@@ -91,7 +92,7 @@ async function syncCacheFromFirebase() {
       }
     });
 
-    leaderboardCache = leaderboard.sort((a, b) => b.solved - a.solved || a.lastFixed - b.lastFixed);
+    leaderboardCache = leaderboard.sort((a, b) => b.bugsFixed - a.bugsFixed || a.lastFixed - b.lastFixed);
     approvalsCache = approvals;
     historyCache = history.sort((a, b) => (a.completionTime || 0) - (b.completionTime || 0));
     
@@ -282,6 +283,7 @@ app.post('/api/login', async (req, res) => {
       const newTeamData = {
         password: password,
         score: 0,
+        bugsFixed: 0,
         hasLoggedIn: true,
         solvedQuestions: [],
         lastFixed: admin.firestore.FieldValue.serverTimestamp()
@@ -296,10 +298,11 @@ app.post('/api/login', async (req, res) => {
         leaderboardCache.push({
           name: teamName,
           score: 0,
+          bugsFixed: 0,
           solved: 0,
           lastFixed: new Date()
         });
-        leaderboardCache.sort((a, b) => b.solved - a.solved || a.lastFixed - b.lastFixed);
+        leaderboardCache.sort((a, b) => b.bugsFixed - a.bugsFixed || a.lastFixed - b.lastFixed);
       }
 
       // Broadcast to the Leaderboard
@@ -331,10 +334,11 @@ app.post('/api/login', async (req, res) => {
           leaderboardCache.push({
             name: teamName,
             score: teamData.score || 0,
+            bugsFixed: teamData.bugsFixed || 0,
             solved: (teamData.solvedQuestions && teamData.solvedQuestions.length) || 0,
             lastFixed: teamData.lastFixed ? (teamData.lastFixed.toDate ? teamData.lastFixed.toDate() : teamData.lastFixed) : new Date()
           });
-          leaderboardCache.sort((a, b) => b.solved - a.solved || a.lastFixed - b.lastFixed);
+          leaderboardCache.sort((a, b) => b.bugsFixed - a.bugsFixed || a.lastFixed - b.lastFixed);
         }
 
         io.emit('team_joined', { teamName: teamName, score: teamData.score || 0 });
@@ -500,6 +504,7 @@ app.post('/api/approve', async (req, res) => {
 
       await teamRef.set({
         score: admin.firestore.FieldValue.increment(question.points),
+        bugsFixed: admin.firestore.FieldValue.increment(1),
         solvedQuestions: admin.firestore.FieldValue.arrayUnion(questionId),
         completionTimes: completionTimes,
         lastFixed: submissionTimestamp,
@@ -508,6 +513,7 @@ app.post('/api/approve', async (req, res) => {
 
       // Update Caches locally
       teamsCache[teamName].score = (teamsCache[teamName].score || 0) + question.points;
+      teamsCache[teamName].bugsFixed = (teamsCache[teamName].bugsFixed || 0) + 1;
       teamsCache[teamName].solvedQuestions = [...(teamsCache[teamName].solvedQuestions || []), questionId];
       teamsCache[teamName].completionTimes = completionTimes;
       teamsCache[teamName].lastFixed = new Date();
@@ -518,12 +524,13 @@ app.post('/api/approve', async (req, res) => {
           return {
             ...team,
             score: (team.score || 0) + question.points,
+            bugsFixed: (team.bugsFixed || 0) + 1,
             solved: (team.solved || 0) + 1,
             lastFixed: new Date()
           };
         }
         return team;
-      }).sort((a, b) => b.solved - a.solved || a.lastFixed - b.lastFixed);
+      }).sort((a, b) => b.bugsFixed - a.bugsFixed || a.lastFixed - b.lastFixed);
 
       approvalsCache = approvalsCache.filter(a => a.teamName !== teamName);
       
@@ -588,7 +595,7 @@ io.on('connection', (socket) => {
         leaderboardCache = leaderboardCache.map(t => {
           if (t.name === data.teamName) return { ...t, score: t.score - 5 };
           return t;
-        }).sort((a, b) => b.solved - a.solved || a.lastFixed - b.lastFixed);
+        }).sort((a, b) => b.bugsFixed - a.bugsFixed || a.lastFixed - b.lastFixed);
         io.emit('leaderboard_update', { leaderboard: leaderboardCache.slice(0, 50) });
       }
 
