@@ -52,7 +52,7 @@ const questionBank = {
   "q2": {
     id: "q2",
     points: 20,
-    testInput: "10 20",
+    testInput: "10\n20",
     expectedOutput: "Before swap: a = 10, b = 20\nAfter swap: a = 20, b = 10",
     initialCode: `#include <stdio.h>\n\nvoid swap(int *a, int *b) {\n    int *temp = a;\n    a = b;\n    b = temp;\n}\n\nint main(void) {\n    int a, b;\n\n    scanf("%d %d", &a, &b);\n\n    printf("Before swap: a = %d, b = %d\\n", a, b);\n    swap(&a, &b);\n    printf("After swap: a = %d, b = %d\\n", a, b);\n\n    return 0;\n}`
   },
@@ -73,7 +73,7 @@ const questionBank = {
   "q5": {
     id: "q5",
     points: 50,
-    testInput: "101 Ravi 88.5",
+    testInput: "101\nRavi\n88.5",
     expectedOutput: "Roll: 101\nName: Ravi\nMarks: 88.50",
     initialCode: `#include <stdio.h>\n\ntypedef struct {\n    int roll;\n    char name[50];\n    float marks;\n} Student;\n\nint main(void) {\n    struct Student s;\n\n    scanf("%d %49s %f", &s.roll, s.name, &s.marks);\n\n    printf("Roll: %d\\n", s.roll);\n    printf("Name: %s\\n", s.name);\n    printf("Marks: %d\\n", s.marks);\n\n    return 0;\n}`
   },
@@ -146,7 +146,7 @@ async function executeWithGodbolt(code, stdinStr) {
       compiler: "cg132",
       options: {
         userArguments: "",
-        executeParameters: { args: [], stdin: stdinStr || "" },
+        executeParameters: { args: [], stdin: (stdinStr || "") + "\n" },
         compilerOptions: { executorRequest: true },
         filters: { execute: true },
         tools: []
@@ -394,7 +394,7 @@ app.post('/api/submit', async (req, res) => {
       else if (questionId === 'q2' && codeClean.includes('*a=*b')) isRegexCorrect = true;
       else if (questionId === 'q3' && codeClean.includes('s[i]-32')) isRegexCorrect = true;
       else if (questionId === 'q4' && codeClean.includes('%X')) isRegexCorrect = true;
-      else if (questionId === 'q5' && codeClean.includes('Students;')) isRegexCorrect = true;
+      else if (questionId === 'q5' && codeClean.includes('Student;')) isRegexCorrect = true;
       else if (questionId === 'q6' && codeClean.includes('n*factorial')) isRegexCorrect = true;
       else if (questionId === 'q7' && codeClean.includes('s[j]<s[min_idx]')) isRegexCorrect = true;
       else if (questionId === 'q8' && codeClean.includes('&n')) isRegexCorrect = true;
