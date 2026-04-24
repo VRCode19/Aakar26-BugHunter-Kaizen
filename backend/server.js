@@ -102,6 +102,10 @@ app.post('/api/login', async (req, res) => {
     return res.status(400).json({ success: false, message: "Missing team name or password" });
   }
 
+  if (password !== 'Kaizen2026') {
+    return res.status(401).json({ success: false, message: "Incorrect password!" });
+  }
+
   // Optional: Sanitize team name (prevent super long names from breaking your UI)
   if (teamName.length > 20) {
     return res.status(400).json({ success: false, message: "Team name is too long! Keep it under 20 characters." });
@@ -179,6 +183,7 @@ app.get('/api/leaderboard', async (req, res) => {
         leaderboard.push({ 
           name: doc.id, 
           score: data.score || 0,
+          solved: (data.solvedQuestions && data.solvedQuestions.length) || 0,
           lastFixed: data.lastFixed ? data.lastFixed.toDate() : new Date(0)
         });
       }
@@ -250,22 +255,18 @@ app.post('/api/submit', async (req, res) => {
 
       if (actualOutput === expectedOutput) {
         
-        // 🎉 Update Database
+        // 🎉 Create Pending Approval instead of Auto-Updating Database
         await teamRef.set({
-          score: admin.firestore.FieldValue.increment(question.points),
-          solvedQuestions: admin.firestore.FieldValue.arrayUnion(questionId),
-          lastFixed: admin.firestore.FieldValue.serverTimestamp()
+          pendingApproval: {
+            questionId: questionId,
+            code: submittedCode,
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+          }
         }, { merge: true });
 
-        io.emit('score_updated', { teamName, points: question.points });
-
-        // 🏆 VICTORY CHECK
-        if (teamData.solvedQuestions && teamData.solvedQuestions.length === 9) {
-           console.log(`🏆 ${teamName} HAS COMPLETED ALL 10 BUGS!`);
-           io.emit('team_finished_all', { teamName: teamName });
-        }
+        io.emit('new_approval_request', { teamName, questionId });
         
-        return res.json({ success: true, message: "Bug Fixed! Points updated." });
+        return res.json({ success: true, message: "Code output is correct! Waiting for Admin approval..." });
       } else {
         return res.json({ 
           success: false, 
@@ -279,6 +280,70 @@ app.post('/api/submit', async (req, res) => {
   } catch (error) {
     console.error("Piston API Error:", error.response ? error.response.data : error.message);
     res.status(500).json({ error: "Compiler Server is busy. Try again in 5 seconds." });
+  }
+});
+
+// ==========================================
+//            ADMIN APPROVALS
+// ==========================================
+
+app.get('/api/approvals', async (req, res) => {
+  try {
+    const teamsSnapshot = await db.collection('teams').get();
+    const approvals = [];
+    teamsSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.pendingApproval) {
+        approvals.push({ teamName: doc.id, ...data.pendingApproval });
+      }
+    });
+    res.json({ success: true, approvals });
+  } catch (error) {
+    console.error("Approvals Error:", error);
+    res.status(500).json({ success: false, message: "Error fetching approvals" });
+  }
+});
+
+app.post('/api/approve', async (req, res) => {
+  const { teamName, questionId, action } = req.body;
+  try {
+    const teamRef = db.collection('teams').doc(teamName);
+    const doc = await teamRef.get();
+    if (!doc.exists) return res.status(404).json({ error: "Team not found" });
+    
+    const teamData = doc.data();
+    if (!teamData.pendingApproval || teamData.pendingApproval.questionId !== questionId) {
+      return res.status(400).json({ error: "No pending approval for this question" });
+    }
+
+    if (action === 'accept') {
+      const question = questionBank[questionId];
+      await teamRef.set({
+        score: admin.firestore.FieldValue.increment(question.points),
+        solvedQuestions: admin.firestore.FieldValue.arrayUnion(questionId),
+        lastFixed: admin.firestore.FieldValue.serverTimestamp(),
+        pendingApproval: admin.firestore.FieldValue.delete()
+      }, { merge: true });
+
+      io.emit('score_updated', { teamName, points: question.points });
+      io.emit('approval_status', { teamName, status: 'accepted', message: 'Admin accepted your solution! You may move to the next question.' });
+
+      // Victory Check
+      if (teamData.solvedQuestions && teamData.solvedQuestions.length === 9) {
+         console.log(`🏆 ${teamName} HAS COMPLETED ALL 10 BUGS!`);
+         io.emit('team_finished_all', { teamName: teamName });
+      }
+    } else {
+      await teamRef.set({
+        pendingApproval: admin.firestore.FieldValue.delete()
+      }, { merge: true });
+      io.emit('approval_status', { teamName, status: 'rejected', message: 'Admin rejected your solution!' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Approve Action Error:", error);
+    res.status(500).json({ success: false, message: "Server error during approval" });
   }
 });
 
@@ -312,6 +377,10 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error("Error applying penalty:", error);
     }
+  });
+
+  socket.on('end_event', () => {
+    io.emit('event_ended');
   });
 
   socket.on('disconnect', () => {
