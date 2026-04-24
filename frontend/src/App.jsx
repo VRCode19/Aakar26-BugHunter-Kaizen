@@ -609,7 +609,6 @@ function App() {
                 <section className="panel scoreboard-panel">
                   <div className="section-title">Scoreboard</div>
                   <div className="scoreboard-head">
-                    <span>Rank</span>
                     <span>Team</span>
                     <span>Solved</span>
                   </div>
@@ -620,11 +619,10 @@ function App() {
                     ) : (
                       visibleLeaderboard.map((team) => (
                         <div key={team.id} className={`score-row ${team.rank === 1 ? 'rank-1' : team.rank === 2 ? 'rank-2' : team.rank === 3 ? 'rank-3' : ''}`}>
-                          <span className="rank-badge">
+                          <strong>
                             {team.rank === 1 && <span className="crown" style={{ display: 'inline-block', marginRight: '4px' }}>👑</span>}
-                            #{team.rank}
-                          </span>
-                          <strong>{team.name}</strong>
+                            {team.name}
+                          </strong>
                           <span>{team.solved}</span>
                         </div>
                       ))
