@@ -35,13 +35,28 @@ Expected output for n = 5:
 
 Debug task:
 Check the inner loop condition carefully. The pattern is missing one value in each row.`,
-    starterCode: `#include <stdio.h>\n\n/*\nInstruction:\nThis program is intentionally buggy.\nFind and fix the bug so it prints the correct number pattern.\n\nInput:\nOne positive integer n.\n\nExpected output for n = 5:\n1\n12\n123\n1234\n12345\n\nDebug task:\nCheck the inner loop condition carefully. The pattern is missing one value in each row.\n*/\n\nint main(void) {\n    int n, i, j;\n\n    scanf("%d", &n);\n\n    for (i = 1; i <= n; i++) {\n        for (j = 1; j < i; j++) {\n            printf("%d", j);\n        }\n        printf("\\n");\n    }\n\n    return 0;\n}`,
+    starterCode: `#include <stdio.h>
+
+int main(void) {
+    int n, i, j;
+
+    scanf("%d", &n);
+
+    for (i = 1; i <= n; i++) {
+        for (j = 1; j < i; j++) {
+            printf("%d", j);
+        }
+        printf("\\n");
+    }
+
+    return 0;
+}`,
   },
   "q2": {
     id: "q2",
     title: "Bug 2: Loop Sum",
     text: "Question 2: Loop Sum\nFix the loop to sum numbers 1 to 5.",
-    starterCode: "// Fix the loop to sum numbers 1 to 5\n#include <stdio.h>\nint main() { int s=0; for(int i=0; i<5; i++) s+=i; printf(\"%d\", s); return 0; }",
+    starterCode: `#include <stdio.h>\nint main() { int s=0; for(int i=0; i<5; i++) s+=i; printf("%d", s); return 0; }`,
   }
 };
 // Auto-generate placeholders for q3 to q10
@@ -683,16 +698,16 @@ function App() {
         </div>
       )}
       {eventEnded && (
-        <div className="lockdown-overlay" style={{background: 'rgba(5, 0, 0, 0.98)'}}>
-          <div className="celebration-content" style={{textAlign: 'center'}}>
-            <h1 className="event-name" style={{fontSize: '3.5rem', marginBottom: '20px'}}>EVENT ENDED</h1>
-            <h2 className="section-title" style={{fontSize: '1.5rem', marginBottom: '40px', color: 'gold'}}>Top Bug Hunters</h2>
-            <div className="winners-podium" style={{display: 'flex', gap: '20px', justifyContent: 'center', alignItems: 'flex-end'}}>
+        <div className="lockdown-overlay event-ended-overlay">
+          <div className="celebration-content">
+            <h1 className="event-name end-title">EVENT ENDED</h1>
+            <h2 className="section-title end-subtitle">Top Bug Hunters</h2>
+            <div className="winners-podium">
               {visibleLeaderboard.slice(0, 3).map(team => (
-                <div key={team.id} className={`podium-rank rank-${team.rank}`} style={{padding: '30px', borderRadius: '15px', background: 'rgba(20, 5, 5, 0.9)', minWidth: '200px', border: '1px solid'}}>
-                  <div className="crown" style={{fontSize: '3rem', marginBottom: '15px'}}>{team.rank === 1 ? '👑' : ''}</div>
-                  <h3 style={{fontSize: '2rem', color: '#fff'}}>{team.name}</h3>
-                  <p style={{fontFamily: 'monospace', color: '#ccc', marginTop: '15px', fontSize: '1.2rem'}}>Solved: {team.solved}</p>
+                <div key={team.id} className={`podium-rank rank-${team.rank}`}>
+                  <div className="crown-icon">{team.rank === 1 ? '👑' : ''}</div>
+                  <h3 className="podium-name">{team.name}</h3>
+                  <p className="podium-solved">Solved: {team.solved}</p>
                 </div>
               ))}
             </div>
