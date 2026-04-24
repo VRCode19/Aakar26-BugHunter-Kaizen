@@ -40,6 +40,64 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 
+// 4.5 In-Memory Cache (To prevent excessive Firebase reads)
+let leaderboardCache = [];
+let approvalsCache = [];
+let historyCache = [];
+
+// Helper to sync cache from Firebase (Run once on startup)
+async function syncCacheFromFirebase() {
+  console.log("🔄 Syncing memory cache with Firebase...");
+  try {
+    const teamsSnapshot = await db.collection('teams').get();
+    const leaderboard = [];
+    const approvals = [];
+    const history = [];
+
+    teamsSnapshot.forEach(doc => {
+      const data = doc.data();
+      const teamName = doc.id;
+
+      if (data.hasLoggedIn) {
+        leaderboard.push({
+          name: teamName,
+          score: data.score || 0,
+          solved: (data.solvedQuestions && data.solvedQuestions.length) || 0,
+          lastFixed: data.lastFixed ? data.lastFixed.toDate() : new Date(0)
+        });
+      }
+
+      if (data.pendingApproval) {
+        approvals.push({
+          teamName: teamName,
+          ...data.pendingApproval,
+          submissionTime: data.pendingApproval.timestamp ? data.pendingApproval.timestamp.toDate() : new Date()
+        });
+      }
+
+      if (data.solvedQuestions) {
+        data.solvedQuestions.forEach(qId => {
+          history.push({
+            teamName,
+            questionId: qId,
+            completionTime: data.completionTimes?.[qId] ? data.completionTimes[qId].toDate() : null,
+            points: questionBank[qId]?.points || 0
+          });
+        });
+      }
+    });
+
+    leaderboardCache = leaderboard.sort((a, b) => b.score - a.score || a.lastFixed - b.lastFixed);
+    approvalsCache = approvals;
+    historyCache = history.sort((a, b) => (a.completionTime || 0) - (b.completionTime || 0));
+    
+    console.log(`✅ Cache Synced: ${leaderboardCache.length} teams, ${approvalsCache.length} pending, ${historyCache.length} solved.`);
+  } catch (error) {
+    console.error("❌ Cache Sync Failed:", error);
+  }
+}
+syncCacheFromFirebase();
+
 // 5. Question Bank (Edit these 10 questions before the event!)
 const questionBank = {
   "q1": {
@@ -228,6 +286,17 @@ app.post('/api/login', async (req, res) => {
       // Save to Firebase
       await teamRef.set(newTeamData);
 
+      // Update Cache
+      if (!leaderboardCache.find(t => t.name === teamName)) {
+        leaderboardCache.push({
+          name: teamName,
+          score: 0,
+          solved: 0,
+          lastFixed: new Date()
+        });
+        leaderboardCache.sort((a, b) => b.score - a.score || a.lastFixed - b.lastFixed);
+      }
+
       // Broadcast to the Leaderboard
       io.emit('team_joined', { teamName: teamName, score: 0 });
 
@@ -249,6 +318,18 @@ app.post('/api/login', async (req, res) => {
           updateData.lastFixed = admin.firestore.FieldValue.serverTimestamp();
         }
         await teamRef.set(updateData, { merge: true });
+
+        // Update Cache if missing (e.g. joined after server start)
+        if (!leaderboardCache.find(t => t.name === teamName)) {
+          leaderboardCache.push({
+            name: teamName,
+            score: teamData.score || 0,
+            solved: (teamData.solvedQuestions && teamData.solvedQuestions.length) || 0,
+            lastFixed: teamData.lastFixed ? teamData.lastFixed.toDate() : new Date()
+          });
+          leaderboardCache.sort((a, b) => b.score - a.score || a.lastFixed - b.lastFixed);
+        }
+
         io.emit('team_joined', { teamName: teamName, score: teamData.score || 0 });
 
         delete teamData.password;
@@ -271,36 +352,9 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// LEADERBOARD ROUTE
-app.get('/api/leaderboard', async (req, res) => {
-  try {
-    const teamsSnapshot = await db.collection('teams').get();
-
-    const leaderboard = [];
-    teamsSnapshot.forEach(doc => {
-      const data = doc.data();
-      if (data.hasLoggedIn) {
-        leaderboard.push({
-          name: doc.id,
-          score: data.score || 0,
-          solved: (data.solvedQuestions && data.solvedQuestions.length) || 0,
-          lastFixed: data.lastFixed ? data.lastFixed.toDate() : new Date(0)
-        });
-      }
-    });
-
-    leaderboard.sort((a, b) => {
-      if (b.score !== a.score) {
-        return b.score - a.score;
-      }
-      return a.lastFixed - b.lastFixed;
-    });
-
-    res.json({ success: true, leaderboard: leaderboard.slice(0, 50) });
-  } catch (error) {
-    console.error("Leaderboard Error:", error);
-    res.status(500).json({ success: false, message: "Error fetching leaderboard" });
-  }
+// LEADERBOARD ROUTE (Uses Cache)
+app.get('/api/leaderboard', (req, res) => {
+  res.json({ success: true, leaderboard: leaderboardCache.slice(0, 50) });
 });
 
 // RUN ROUTE (Compile & Execute via Godbolt)
@@ -378,13 +432,19 @@ app.post('/api/submit', async (req, res) => {
     }
 
     // 🎉 Create Pending Approval - Admin will review physically
+    const pendingData = {
+      questionId: questionId,
+      code: submittedCode,
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    };
+
     await teamRef.set({
-      pendingApproval: {
-        questionId: questionId,
-        code: submittedCode,
-        timestamp: admin.firestore.FieldValue.serverTimestamp()
-      }
+      pendingApproval: pendingData
     }, { merge: true });
+
+    // Update Cache
+    approvalsCache = approvalsCache.filter(a => a.teamName !== teamName);
+    approvalsCache.push({ teamName, ...pendingData, submissionTime: new Date() });
 
     io.emit('new_approval_request', { teamName, questionId });
 
@@ -403,63 +463,13 @@ app.post('/api/submit', async (req, res) => {
 //            ADMIN APPROVALS
 // ==========================================
 
-app.get('/api/approvals', async (req, res) => {
-  try {
-    const teamsSnapshot = await db.collection('teams').get();
-    const approvals = [];
-    teamsSnapshot.forEach(doc => {
-      const data = doc.data();
-      if (data.pendingApproval) {
-        const timestamp = data.pendingApproval.timestamp;
-        approvals.push({ 
-          teamName: doc.id, 
-          ...data.pendingApproval,
-          submissionTime: timestamp ? timestamp.toDate() : new Date()
-        });
-      }
-    });
-    res.json({ success: true, approvals });
-  } catch (error) {
-    console.error("Approvals Error:", error);
-    res.status(500).json({ success: false, message: "Error fetching approvals" });
-  }
+app.get('/api/approvals', (req, res) => {
+  res.json({ success: true, approvals: approvalsCache });
 });
 
-// Submission history route - shows all question submissions with timestamps
-app.get('/api/submission-history', async (req, res) => {
-  try {
-    const teamsSnapshot = await db.collection('teams').get();
-    const history = [];
-
-    teamsSnapshot.forEach(doc => {
-      const data = doc.data();
-      const teamName = doc.id;
-
-      if (data.solvedQuestions && data.solvedQuestions.length > 0) {
-        data.solvedQuestions.forEach(questionId => {
-          const completionTime = data.completionTimes?.[questionId];
-          history.push({
-            teamName,
-            questionId,
-            completionTime: completionTime ? completionTime.toDate() : null,
-            points: questionBank[questionId]?.points || 0
-          });
-        });
-      }
-    });
-
-    // Sort by completion time (earliest first)
-    history.sort((a, b) => {
-      if (!a.completionTime) return 1;
-      if (!b.completionTime) return -1;
-      return a.completionTime - b.completionTime;
-    });
-
-    res.json({ success: true, history });
-  } catch (error) {
-    console.error("Submission History Error:", error);
-    res.status(500).json({ success: false, message: "Error fetching submission history" });
-  }
+// Submission history route - uses Cache
+app.get('/api/submission-history', (req, res) => {
+  res.json({ success: true, history: historyCache });
 });
 
 app.post('/api/approve', async (req, res) => {
@@ -490,39 +500,35 @@ app.post('/api/approve', async (req, res) => {
         pendingApproval: admin.firestore.FieldValue.delete()
       }, { merge: true });
 
+      // Update Caches locally instead of re-reading everything
+      leaderboardCache = leaderboardCache.map(team => {
+        if (team.name === teamName) {
+          return {
+            ...team,
+            score: (team.score || 0) + question.points,
+            solved: (team.solved || 0) + 1,
+            lastFixed: new Date()
+          };
+        }
+        return team;
+      }).sort((a, b) => b.score - a.score || a.lastFixed - b.lastFixed);
+
+      approvalsCache = approvalsCache.filter(a => a.teamName !== teamName);
+      
+      historyCache.push({
+        teamName,
+        questionId,
+        completionTime: new Date(),
+        points: question.points
+      });
+      historyCache.sort((a, b) => (a.completionTime || 0) - (b.completionTime || 0));
+
       io.emit('score_updated', { teamName, points: question.points, questionId, submissionTime: submissionTimestamp, completionTime: new Date() });
       io.emit('approval_status', { teamName, status: 'accepted', message: 'Admin accepted your solution! You may move to the next question.' });
-
-      // Broadcast leaderboard update to all connected clients
-      const teamsSnapshot = await db.collection('teams').get();
-      const leaderboard = [];
-      teamsSnapshot.forEach(doc => {
-        const data = doc.data();
-        if (data.hasLoggedIn) {
-          leaderboard.push({
-            name: doc.id,
-            score: data.score || 0,
-            solved: (data.solvedQuestions && data.solvedQuestions.length) || 0,
-            lastFixed: data.lastFixed ? data.lastFixed.toDate() : new Date(0),
-            solvedQuestions: data.solvedQuestions || [],
-            completionTimes: data.completionTimes || {}
-          });
-        }
-      });
-
-      leaderboard.sort((a, b) => {
-        if (b.score !== a.score) {
-          return b.score - a.score;
-        }
-        return a.lastFixed - b.lastFixed;
-      });
-
-      io.emit('leaderboard_update', { leaderboard: leaderboard.slice(0, 50) });
+      io.emit('leaderboard_update', { leaderboard: leaderboardCache.slice(0, 50) });
 
       // Victory Check
-      const updatedDoc = await teamRef.get();
-      const updatedData = updatedDoc.data();
-      if (updatedData.solvedQuestions && updatedData.solvedQuestions.length === 10) {
+      if (teamData.solvedQuestions && teamData.solvedQuestions.length === 9) { // 9 + current 1 = 10
         console.log(`🏆 ${teamName} HAS COMPLETED ALL 10 BUGS!`);
         io.emit('team_finished_all', { teamName: teamName });
       }
@@ -530,6 +536,7 @@ app.post('/api/approve', async (req, res) => {
       await teamRef.set({
         pendingApproval: admin.firestore.FieldValue.delete()
       }, { merge: true });
+      approvalsCache = approvalsCache.filter(a => a.teamName !== teamName);
       io.emit('approval_status', { teamName, status: 'rejected', message: 'Admin rejected your solution!' });
     }
 
