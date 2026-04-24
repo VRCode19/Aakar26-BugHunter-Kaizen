@@ -414,10 +414,20 @@ app.post('/api/submit', async (req, res) => {
 
     const expectedOutput = question.expectedOutput.trim();
 
-    const cleanOut = actualOutput ? actualOutput.replace(/\s+/g, '').replace(/[^\x20-\x7E]/g, '') : '';
-    const cleanExp = expectedOutput ? expectedOutput.replace(/\s+/g, '').replace(/[^\x20-\x7E]/g, '') : '';
+    // If actualOutput is null at this point, something went wrong
+    if (actualOutput === null) {
+      return res.json({ success: false, message: "Execution Failed", error: "Code did not produce any output. Please check your code." });
+    }
 
-    if (cleanOut === cleanExp) {
+    // Direct string comparison with trimming and newline normalization
+    const normalizeOutput = (str) => {
+      return str.trim().replace(/\r\n/g, '\n');
+    };
+
+    const normalizedActual = normalizeOutput(actualOutput);
+    const normalizedExpected = normalizeOutput(expectedOutput);
+
+    if (normalizedActual === normalizedExpected) {
       // 🎉 Create Pending Approval instead of Auto-Updating Database
       await teamRef.set({
         pendingApproval: {
@@ -429,13 +439,12 @@ app.post('/api/submit', async (req, res) => {
 
       io.emit('new_approval_request', { teamName, questionId });
 
-      return res.json({ success: true, message: `Code output is correct! Waiting for Admin approval...\nYour output: '${actualOutput.substring(0, 100)}'` });
+      return res.json({ success: true, message: `Code output is correct! Waiting for Admin approval...\nYour output: '${normalizedActual.substring(0, 100)}'` });
     } else {
-      const actualOutputText = actualOutput.substring(0, 100);
       return res.json({
         success: false,
         message: "Incorrect Output",
-        error: `Output did not match expected result.\nYour output:    '${actualOutputText}'\nExpected output: '${expectedOutput.substring(0, 100)}'`
+        error: `Output did not match expected result.\nYour output:\n'${normalizedActual}'\n\nExpected output:\n'${normalizedExpected}'`
       });
     }
 

@@ -937,6 +937,19 @@ function App() {
                         className="code-editor"
                         value={editedCode}
                         onChange={(event) => setEditedCode(event.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Tab') {
+                            e.preventDefault();
+                            const textarea = e.target;
+                            const start = textarea.selectionStart;
+                            const end = textarea.selectionEnd;
+                            const newCode = editedCode.substring(0, start) + '\t' + editedCode.substring(end);
+                            setEditedCode(newCode);
+                            setTimeout(() => {
+                              textarea.selectionStart = textarea.selectionEnd = start + 1;
+                            }, 0);
+                          }
+                        }}
                         spellCheck="false"
                         onCopy={(e) => e.preventDefault()}
                         onCut={(e) => e.preventDefault()}
@@ -948,6 +961,19 @@ function App() {
                         style={{ minHeight: '60px', marginTop: '8px', padding: '10px' }}
                         value={customInput}
                         onChange={(e) => setCustomInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Tab') {
+                            e.preventDefault();
+                            const textarea = e.target;
+                            const start = textarea.selectionStart;
+                            const end = textarea.selectionEnd;
+                            const newInput = customInput.substring(0, start) + '\t' + customInput.substring(end);
+                            setCustomInput(newInput);
+                            setTimeout(() => {
+                              textarea.selectionStart = textarea.selectionEnd = start + 1;
+                            }, 0);
+                          }
+                        }}
                         placeholder="Enter custom input for testing..."
                         spellCheck="false"
                       />
