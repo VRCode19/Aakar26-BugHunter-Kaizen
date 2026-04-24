@@ -1,4 +1,5 @@
 const express = require('express');
+console.log("\n\n🔥🔥🔥 BUG HUNTER 2026: BANK VERSION 2.0 LOADED 🔥🔥🔥\n\n");
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
@@ -14,7 +15,7 @@ const app = express();
 
 // 3. Setup Middleware
 app.use(cors({
-  origin: "*", 
+  origin: "*",
   methods: ["GET", "POST"]
 }));
 app.use(express.json());
@@ -30,7 +31,7 @@ try {
     console.log('🔥 Firebase connected via Env Var string!');
   } else {
     console.error("❌ ERROR: No Firebase credentials found!");
-    process.exit(1); 
+    process.exit(1);
   }
 }
 
@@ -39,27 +40,75 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 
-// 5. Question Bank (Expand this to 10 questions before the event!)
+// 5. Question Bank (Edit these 10 questions before the event!)
 const questionBank = {
   "q1": {
     id: "q1",
     points: 10,
-    expectedOutput: "Hello World",
-    initialCode: "#include <stdio.h>\nint main() { printf(\"Hello World\"); return 0; }" 
+    testInput: "5",
+    initialCode: `#include <stdio.h>\n\nint main(void) {\n    int n, i, j;\n\n    scanf("%d", &n);\n\n    for (i = 1; i <= n; i++) {\n        for (j = 1; j < i; j++) {\n            printf("%d", j);\n        }\n        printf("\\n");\n    }\n\n    return 0;\n}`
   },
   "q2": {
     id: "q2",
     points: 20,
-    expectedOutput: "15",
-    initialCode: "// Fix the loop to sum numbers 1 to 5\n#include <stdio.h>\nint main() { int s=0; for(int i=0; i<5; i++) s+=i; printf(\"%d\", s); return 0; }"
+    testInput: "10\n20",
+    initialCode: `#include <stdio.h>\n\nvoid swap(int *a, int *b) {\n    int *temp = a;\n    a = b;\n    b = temp;\n}\n\nint main(void) {\n    int a, b;\n\n    scanf("%d %d", &a, &b);\n\n    printf("Before swap: a = %d, b = %d\\n", a, b);\n    swap(&a, &b);\n    printf("After swap: a = %d, b = %d\\n", a, b);\n\n    return 0;\n}`
+  },
+  "q3": {
+    id: "q3",
+    points: 30,
+    testInput: "hello",
+    initialCode: `#include <stdio.h>\n\nint main(void) {\n    char s[100];\n    int i;\n\n    scanf("%99s", s);\n\n    for (i = 0; s[i] != '\\0'; i++) {\n        if (s[i] >= 'a' && s[i] <= 'z') {\n            s[i] = s[i] + 32;\n        }\n    }\n\n    printf("Uppercase: %s\\n", s);\n    printf("ASCII values:\\n");\n\n    for (i = 0; s[i] != '\\0'; i++) {\n        printf("%c -> %d\\n", s[i], (int)s[i]);\n    }\n\n    return 0;\n}`
+  },
+  "q4": {
+    id: "q4",
+    points: 40,
+    testInput: "10",
+    initialCode: `#include <stdio.h>\n\nint main(void) {\n    int n;\n\n    scanf("%d", &n);\n\n    int odd_bit = n && 1;\n\n    printf("n & 1 = %d\\n", odd_bit);\n    printf("n << 1 = %d\\n", n << 1);\n    printf("n >> 1 = %d\\n", n >> 1);\n    printf("Hex of n = 0x%d\\n", n);\n\n    return 0;\n}`
+  },
+  "q5": {
+    id: "q5",
+    points: 50,
+    testInput: "101\nRavi\n88.5",
+    initialCode: `#include <stdio.h>\n\ntypedef struct {\n    int roll;\n    char name[50];\n    float marks;\n} Student;\n\nint main(void) {\n    struct Student s;\n\n    scanf("%d %49s %f", &s.roll, s.name, &s.marks);\n\n    printf("Roll: %d\\n", s.roll);\n    printf("Name: %s\\n", s.name);\n    printf("Marks: %d\\n", s.marks);\n\n    return 0;\n}`
+  },
+  "q6": {
+    id: "q6",
+    points: 60,
+    testInput: "5",
+    initialCode: `#include <stdio.h>\n\nint factorial(int n) {\n    return n + factorial(n - 1);\n}\n\nint main(void) {\n    int n;\n\n    scanf("%d", &n);\n\n    printf("Factorial of %d is %d\\n", n, factorial(n));\n\n    return 0;\n}`
+  },
+  "q7": {
+    id: "q7",
+    points: 70,
+    testInput: "dcba",
+    initialCode: `#include <stdio.h>\n#include <string.h>\n\nint main(void) {\n    char s[100];\n    int i, j, min_idx, n;\n    char temp;\n\n    scanf("%99s", s);\n    n = (int)strlen(s);\n\n    for (i = 0; i < n - 1; i++) {\n        min_idx = i;\n\n        for (j = i + 1; j < n; j++) {\n            if (s[j] > s[min_idx]) {\n                min_idx = j;\n            }\n        }\n\n        temp = s[i];\n        s[i] = s[min_idx];\n        s[min_idx] = temp;\n    }\n\n    printf("Sorted string: %s\\n", s);\n\n    return 0;\n}`
+  },
+  "q8": {
+    id: "q8",
+    points: 80,
+    testInput: "25",
+    initialCode: `#include <stdio.h>\n\nint main(void) {\n    int n;\n\n    scanf("%d", n);\n\n    printf("You entered: %f\\n"+ n);\n    printf("Square: %d\\n", n * n);\n\n    return 0;\n}`
+  },
+  "q9": {
+    id: "q9",
+    points: 90,
+    testInput: "5",
+    initialCode: `#include <stdio.h>\n\nint main(void) {\n    int n, i;\n\n    scanf("%d", &n);\n\n    for (i = 1; i < n; i++) {\n        if (i % 2 == 1) {\n            printf("%d is Even\\n", i);\n        } else {\n            printf("%d is Odd\\n", i);\n        }\n    }\n\n    return 0;\n}`
+  },
+  "q10": {
+    id: "q10",
+    points: 100,
+    testInput: "42",
+    initialCode: `#include <stdio.h>\n\nint main(void) {\n    int n, value;\n    FILE *fp;\n\n    scanf("%d", &n);\n\n    fp = fopen("number.txt", "r");\n    if (fp == NULL) {\n        printf("File open error\\n");\n        return 1;\n    }\n\n    fprintf(fp, "%d", n);\n    fclose(fp);\n\n    fp = fopen("number.txt", "r");\n    if (fp == NULL) {\n        printf("File open error\\n");\n        return 1;\n    }\n\n    fscanf(fp, "%d", &value);\n    fclose(fp);\n\n    printf("Value read from file: %d\\n", value);\n\n    return 0;\n}`
   }
 };
 
-// 6. Submit Rate Limiter (Protects Piston API)
+// 6. Submit Rate Limiter
 const rateLimit = require('express-rate-limit');
 const submitLimiter = rateLimit({
-  windowMs: 5 * 1000, 
-  max: 1, 
+  windowMs: 5 * 1000,
+  max: 1,
   message: { error: "Wait 5 seconds between attempts!" }
 });
 app.use('/api/submit', submitLimiter);
@@ -68,7 +117,7 @@ app.use('/api/submit', submitLimiter);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", 
+    origin: "*",
     methods: ["GET", "POST"]
   }
 });
@@ -79,65 +128,175 @@ app.set('io', io);
 //                 API ROUTES
 // ==========================================
 
+// Helper for compiling code using Godbolt API
+async function executeWithGodbolt(code, stdinStr) {
+  try {
+    const data = {
+      source: code,
+      compiler: "cg132",
+      options: {
+        userArguments: "",
+        executeParameters: { args: [], stdin: (stdinStr || "") + "\n" },
+        compilerOptions: { executorRequest: true },
+        filters: { execute: true },
+        tools: []
+      },
+      lang: "c",
+      allowStoreCodeDebug: true
+    };
+    const config = {
+      method: 'post',
+      url: 'https://godbolt.org/api/compiler/cg132/compile',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      data: data,
+      timeout: 15000
+    };
+    const res = await axios(config);
+    const d = res.data;
+
+    // Check if build failed
+    if (d.buildResult && d.buildResult.code !== 0) {
+      const buildErr = (d.buildResult.stderr || []).map(item => item.text).join('\n');
+      return { actualOutput: null, compilerErrorStr: buildErr || "Compilation Error" };
+    }
+
+    // Check if execution happened
+    if (d.didExecute) {
+      const outArr = (d.stdout || []).map(item => item.text).join('\n');
+      const errArr = (d.stderr || []).map(item => item.text).join('\n');
+      // If there's stderr but also stdout, include both
+      if (errArr && !outArr) {
+        return { actualOutput: null, compilerErrorStr: errArr };
+      }
+      return { actualOutput: outArr, compilerErrorStr: null };
+    } else {
+      // Build succeeded but didn't execute (shouldn't happen with executorRequest)
+      const buildStderr = (d.buildResult?.stderr || []).map(item => item.text).join('\n');
+      return { actualOutput: null, compilerErrorStr: buildStderr || "Build succeeded but execution failed" };
+    }
+  } catch (error) {
+    console.error("Godbolt failed:", error.message);
+    return { actualOutput: null, compilerErrorStr: null }; // Pass through to failsafe
+  }
+}
+
 app.get('/', (req, res) => {
   res.send('BugHunter Backend is live on Render! 🔥');
 });
 
-// LOGIN ROUTE
+// AUTO-REGISTER & LOGIN ROUTE
 app.post('/api/login', async (req, res) => {
   const { teamName, password } = req.body;
-  if (!teamName || !password) return res.status(400).json({ success: false, message: "Missing fields" });
+
+  if (!teamName || !password) {
+    return res.status(400).json({ success: false, message: "Missing team name or password" });
+  }
+
+  if (password !== 'Kaizen2026') {
+    return res.status(401).json({ success: false, message: "Incorrect password!" });
+  }
+
+  // Optional: Sanitize team name (prevent super long names from breaking your UI)
+  if (teamName.length > 20) {
+    return res.status(400).json({ success: false, message: "Team name is too long! Keep it under 20 characters." });
+  }
 
   try {
     const teamRef = db.collection('teams').doc(teamName);
     const doc = await teamRef.get();
 
-    if (!doc.exists) return res.status(404).json({ success: false, message: "Team not found!" });
+    if (!doc.exists) {
+      // 🌟 NEW TEAM REGISTRATION 🌟
+      const newTeamData = {
+        password: password,
+        score: 0,
+        hasLoggedIn: true,
+        solvedQuestions: [],
+        lastFixed: admin.firestore.FieldValue.serverTimestamp()
+      };
 
-    const teamData = doc.data();
-    if (teamData.password === password) {
-      await teamRef.set({ hasLoggedIn: true }, { merge: true });
-      io.emit('team_joined', { teamName: doc.id, score: teamData.score || 0 });
-      delete teamData.password; 
-      return res.json({ success: true, message: "Welcome to BugHunter!", team: { name: doc.id, ...teamData } });
+      // Save to Firebase
+      await teamRef.set(newTeamData);
+
+      // Broadcast to the Leaderboard
+      io.emit('team_joined', { teamName: teamName, score: 0 });
+
+      delete newTeamData.password;
+      return res.json({
+        success: true,
+        message: "New team registered and logged in!",
+        team: { name: teamName, ...newTeamData }
+      });
+
     } else {
-      return res.status(401).json({ success: false, message: "Incorrect password" });
+      // 🔄 EXISTING TEAM LOGIN 🔄
+      const teamData = doc.data();
+
+      if (teamData.password === password) {
+        // Correct password
+        const updateData = { hasLoggedIn: true };
+        if (!teamData.lastFixed) {
+          updateData.lastFixed = admin.firestore.FieldValue.serverTimestamp();
+        }
+        await teamRef.set(updateData, { merge: true });
+        io.emit('team_joined', { teamName: teamName, score: teamData.score || 0 });
+
+        delete teamData.password;
+        return res.json({
+          success: true,
+          message: "Welcome back!",
+          team: { name: teamName, ...teamData }
+        });
+      } else {
+        // Wrong password
+        return res.status(401).json({
+          success: false,
+          message: "Team name already taken, or incorrect password!"
+        });
+      }
     }
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Login Error:", error);
+    res.status(500).json({ success: false, message: "Server error during login" });
   }
 });
 
 // LEADERBOARD ROUTE
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    const teamsSnapshot = await db.collection('teams')
-      .where('hasLoggedIn', '==', true) 
-      .orderBy('score', 'desc')
-      .orderBy('lastFixed', 'asc')
-      .limit(50)
-      .get();
+    const teamsSnapshot = await db.collection('teams').get();
 
     const leaderboard = [];
     teamsSnapshot.forEach(doc => {
       const data = doc.data();
-      leaderboard.push({ 
-        name: doc.id, 
-        score: data.score || 0,
-        lastFixed: data.lastFixed ? data.lastFixed.toDate() : null
-      });
+      if (data.hasLoggedIn) {
+        leaderboard.push({
+          name: doc.id,
+          score: data.score || 0,
+          solved: (data.solvedQuestions && data.solvedQuestions.length) || 0,
+          lastFixed: data.lastFixed ? data.lastFixed.toDate() : new Date(0)
+        });
+      }
     });
 
-    res.json({ success: true, leaderboard });
+    leaderboard.sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return a.lastFixed - b.lastFixed;
+    });
+
+    res.json({ success: true, leaderboard: leaderboard.slice(0, 50) });
   } catch (error) {
+    console.error("Leaderboard Error:", error);
     res.status(500).json({ success: false, message: "Error fetching leaderboard" });
   }
 });
 
-// SUBMIT ROUTE (With Piston & Anti-Cheat)
-app.post('/api/submit', async (req, res) => {
+// RUN ROUTE (Compile & Execute via Godbolt)
+app.post('/api/run', async (req, res) => {
   const { teamName, questionId, submittedCode } = req.body;
-  
+
   if (!teamName || !questionId || !submittedCode) {
     return res.status(400).json({ error: "Missing required fields" });
   }
@@ -146,72 +305,228 @@ app.post('/api/submit', async (req, res) => {
   if (!question) return res.status(404).json({ error: "Question not found" });
 
   try {
+    let actualOutput = null;
+    let compilerErrorStr = null;
+
+    const inputToUse = req.body.customInput !== undefined ? req.body.customInput : question.testInput;
+    const gbResult = await executeWithGodbolt(submittedCode, inputToUse);
+    if (gbResult.actualOutput !== null || gbResult.compilerErrorStr !== null) {
+      actualOutput = gbResult.actualOutput;
+      compilerErrorStr = gbResult.compilerErrorStr;
+    }
+
+    if (compilerErrorStr) {
+      return res.json({ success: true, message: "Compilation Error", output: compilerErrorStr });
+    }
+
+    if (actualOutput !== null) {
+      return res.json({ success: true, message: "Execution Complete", output: actualOutput });
+    } else {
+      return res.json({ success: false, error: "Execution failed across all backends. Please try again." });
+    }
+  } catch (error) {
+    console.error("Run Error:", error);
+    res.status(500).json({ error: "System failure. Could not run execution." });
+  }
+});
+
+// SUBMIT ROUTE (Submit for Admin Approval - No Validation)
+app.post('/api/submit', async (req, res) => {
+  const { teamName, questionId, submittedCode } = req.body;
+
+  if (!teamName || !questionId || !submittedCode) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  const question = questionBank[questionId];
+  if (!question) return res.status(404).json({ error: "Question not found" });
+
+  console.log(`\n📥 Submission Received: Team: ${teamName}, Question: ${questionId}`);
+
+  try {
     // Check Firebase FIRST to prevent double-dipping
     const teamRef = db.collection('teams').doc(teamName);
     const teamDoc = await teamRef.get();
-    
+
     if (!teamDoc.exists) return res.status(404).json({ error: "Team not found" });
     const teamData = teamDoc.data();
 
-    // 🛑 ANTI-CHEAT: Did they already solve this?
+    // 🛑 ANTI-CHEAT - Check if already solved
     if (teamData.solvedQuestions && teamData.solvedQuestions.includes(questionId)) {
-      return res.json({ 
-        success: false, 
-        message: "Nice try! You already fixed this bug. Move on to the next one!" 
+      return res.json({
+        success: false,
+        message: "Nice try! You already fixed this bug. Move on to the next one!"
       });
     }
 
-    // Call Piston API
-    const pistonResponse = await axios.post('https://emkc.org/api/v2/piston/execute', {
-      language: 'c',
-      version: '*', 
-      files: [{ name: "main.c", content: submittedCode }]
+    // 🛑 ANTI-CHEAT - Check if already pending approval
+    if (teamData.pendingApproval && teamData.pendingApproval.questionId === questionId) {
+      return res.json({
+        success: false,
+        message: "This submission is already pending admin approval. Please wait!"
+      });
+    }
+
+    // 🎉 Create Pending Approval - No validation, admin will review
+    await teamRef.set({
+      pendingApproval: {
+        questionId: questionId,
+        code: submittedCode,
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      }
+    }, { merge: true });
+
+    io.emit('new_approval_request', { teamName, questionId });
+
+    return res.json({ 
+      success: true, 
+      message: `Submission received! Waiting for admin review...\nAdmin will verify your fix and update the leaderboard.` 
     });
 
-    const { run, compile } = pistonResponse.data;
+  } catch (error) {
+    console.error("Submit Error:", error);
+    res.status(500).json({ error: "System failure. Could not process submission." });
+  }
+});
 
-    // Check Compilation
-    if (compile && compile.code !== 0) {
-      return res.json({ success: false, message: "Compilation Error", error: compile.stderr });
-    }
+// ==========================================
+//            ADMIN APPROVALS
+// ==========================================
 
-    // Check Output
-    if (run && run.stdout !== undefined) {
-      const actualOutput = run.stdout.trim(); 
-      const expectedOutput = question.expectedOutput.trim();
-
-      if (actualOutput === expectedOutput) {
-        
-        // 🎉 Update Database
-        await teamRef.set({
-          score: admin.firestore.FieldValue.increment(question.points),
-          solvedQuestions: admin.firestore.FieldValue.arrayUnion(questionId),
-          lastFixed: admin.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-
-        io.emit('score_updated', { teamName, points: question.points });
-
-        // 🏆 VICTORY CHECK: Did they just finish the 10th question?
-        // We check for 9, because this current successful submission makes it 10
-        if (teamData.solvedQuestions && teamData.solvedQuestions.length === 9) {
-           console.log(`🏆 ${teamName} HAS COMPLETED ALL 10 BUGS!`);
-           io.emit('team_finished_all', { teamName: teamName });
-        }
-        
-        return res.json({ success: true, message: "Bug Fixed! Points updated." });
-      } else {
-        return res.json({ 
-          success: false, 
-          message: "Incorrect Output", 
-          error: `Expected: '${expectedOutput}', but got: '${actualOutput}'` 
+app.get('/api/approvals', async (req, res) => {
+  try {
+    const teamsSnapshot = await db.collection('teams').get();
+    const approvals = [];
+    teamsSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.pendingApproval) {
+        const timestamp = data.pendingApproval.timestamp;
+        approvals.push({ 
+          teamName: doc.id, 
+          ...data.pendingApproval,
+          submissionTime: timestamp ? timestamp.toDate() : new Date()
         });
       }
-    }
-    res.status(500).json({ error: "Execution failed. No output returned." });
-
+    });
+    res.json({ success: true, approvals });
   } catch (error) {
-    console.error("Piston API Error:", error.response ? error.response.data : error.message);
-    res.status(500).json({ error: "Compiler Server is busy. Try again in 5 seconds." });
+    console.error("Approvals Error:", error);
+    res.status(500).json({ success: false, message: "Error fetching approvals" });
+  }
+});
+
+// Submission history route - shows all question submissions with timestamps
+app.get('/api/submission-history', async (req, res) => {
+  try {
+    const teamsSnapshot = await db.collection('teams').get();
+    const history = [];
+
+    teamsSnapshot.forEach(doc => {
+      const data = doc.data();
+      const teamName = doc.id;
+
+      if (data.solvedQuestions && data.solvedQuestions.length > 0) {
+        data.solvedQuestions.forEach(questionId => {
+          const completionTime = data.completionTimes?.[questionId];
+          history.push({
+            teamName,
+            questionId,
+            completionTime: completionTime ? completionTime.toDate() : null,
+            points: questionBank[questionId]?.points || 0
+          });
+        });
+      }
+    });
+
+    // Sort by completion time (earliest first)
+    history.sort((a, b) => {
+      if (!a.completionTime) return 1;
+      if (!b.completionTime) return -1;
+      return a.completionTime - b.completionTime;
+    });
+
+    res.json({ success: true, history });
+  } catch (error) {
+    console.error("Submission History Error:", error);
+    res.status(500).json({ success: false, message: "Error fetching submission history" });
+  }
+});
+
+app.post('/api/approve', async (req, res) => {
+  const { teamName, questionId, action } = req.body;
+  try {
+    const teamRef = db.collection('teams').doc(teamName);
+    const doc = await teamRef.get();
+    if (!doc.exists) return res.status(404).json({ error: "Team not found" });
+
+    const teamData = doc.data();
+    if (!teamData.pendingApproval || teamData.pendingApproval.questionId !== questionId) {
+      return res.status(400).json({ error: "No pending approval for this question" });
+    }
+
+    if (action === 'accept') {
+      const question = questionBank[questionId];
+      const submissionTimestamp = teamData.pendingApproval.timestamp || admin.firestore.FieldValue.serverTimestamp();
+      
+      // Build completion times object
+      const completionTimes = (teamData.completionTimes || {});
+      completionTimes[questionId] = submissionTimestamp;
+
+      await teamRef.set({
+        score: admin.firestore.FieldValue.increment(question.points),
+        solvedQuestions: admin.firestore.FieldValue.arrayUnion(questionId),
+        completionTimes: completionTimes,
+        lastFixed: submissionTimestamp,
+        pendingApproval: admin.firestore.FieldValue.delete()
+      }, { merge: true });
+
+      io.emit('score_updated', { teamName, points: question.points, questionId, submissionTime: submissionTimestamp, completionTime: new Date() });
+      io.emit('approval_status', { teamName, status: 'accepted', message: 'Admin accepted your solution! You may move to the next question.' });
+
+      // Broadcast leaderboard update to all connected clients
+      const teamsSnapshot = await db.collection('teams').get();
+      const leaderboard = [];
+      teamsSnapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.hasLoggedIn) {
+          leaderboard.push({
+            name: doc.id,
+            score: data.score || 0,
+            solved: (data.solvedQuestions && data.solvedQuestions.length) || 0,
+            lastFixed: data.lastFixed ? data.lastFixed.toDate() : new Date(0),
+            solvedQuestions: data.solvedQuestions || [],
+            completionTimes: data.completionTimes || {}
+          });
+        }
+      });
+
+      leaderboard.sort((a, b) => {
+        if (b.score !== a.score) {
+          return b.score - a.score;
+        }
+        return a.lastFixed - b.lastFixed;
+      });
+
+      io.emit('leaderboard_update', { leaderboard: leaderboard.slice(0, 50) });
+
+      // Victory Check
+      const updatedDoc = await teamRef.get();
+      const updatedData = updatedDoc.data();
+      if (updatedData.solvedQuestions && updatedData.solvedQuestions.length === 10) {
+        console.log(`🏆 ${teamName} HAS COMPLETED ALL 10 BUGS!`);
+        io.emit('team_finished_all', { teamName: teamName });
+      }
+    } else {
+      await teamRef.set({
+        pendingApproval: admin.firestore.FieldValue.delete()
+      }, { merge: true });
+      io.emit('approval_status', { teamName, status: 'rejected', message: 'Admin rejected your solution!' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Approve Action Error:", error);
+    res.status(500).json({ success: false, message: "Server error during approval" });
   }
 });
 
@@ -221,30 +536,35 @@ app.post('/api/submit', async (req, res) => {
 
 io.on('connection', (socket) => {
   console.log(`📡 New screen connected: ${socket.id}`);
-  
+
   // 🚨 ANTI-CHEAT: Penalty for switching tabs
   socket.on('tab_switch_violation', async (data) => {
     if (!data || !data.teamName) return;
-    
+    if (data.teamName === 'bughunter2026') return; // EXEMPT ADMIN
+
     console.log(`🚨 CHEATING DETECTED: ${data.teamName} tabbed out!`);
-    
+
     try {
       const teamRef = db.collection('teams').doc(data.teamName);
-      
+
       // Deduct 5 points!
       await teamRef.set({
         score: admin.firestore.FieldValue.increment(-5)
       }, { merge: true });
 
       // Tell the big screen to flash a penalty warning
-      io.emit('score_updated', { 
-        teamName: data.teamName, 
+      io.emit('score_updated', {
+        teamName: data.teamName,
         points: -5,
-        message: "Penalty applied for switching tabs!"
+        message: `Penalty applied to ${data.teamName} for switching tabs!`
       });
     } catch (error) {
       console.error("Error applying penalty:", error);
     }
+  });
+
+  socket.on('end_event', () => {
+    io.emit('event_ended');
   });
 
   socket.on('disconnect', () => {
