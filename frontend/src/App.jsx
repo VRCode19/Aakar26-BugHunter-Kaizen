@@ -574,10 +574,15 @@ function App() {
 
   const visibleLeaderboard = useMemo(() => {
     const filtered = leaderboard.filter((team) => !disqualifiedTeams.includes(team.id))
-    return filtered.map((team, index) => ({
-      ...team,
-      rank: index + 1,
-    }))
+    return filtered
+      .sort((a, b) => {
+        if (b.solved !== a.solved) return b.solved - a.solved
+        return (new Date(a.lastFixed) || 0) - (new Date(b.lastFixed) || 0)
+      })
+      .map((team, index) => ({
+        ...team,
+        rank: index + 1,
+      }))
   }, [leaderboard, disqualifiedTeams])
 
   const handleTeamLogin = async () => {
