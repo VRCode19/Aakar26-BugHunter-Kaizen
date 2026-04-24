@@ -657,7 +657,7 @@ function App() {
   }
 
   const handleMockSubmit = async () => {
-    setConsoleOutput('Submitting code to compiler...')
+    setConsoleOutput('Submitting code for admin review...')
     try {
       const response = await axios.post(`${BACKEND_URL}/api/submit`, {
         teamName: session.id,
@@ -666,7 +666,7 @@ function App() {
       })
 
       if (response.data.success) {
-        setConsoleOutput(`Success: ${response.data.message}`)
+        setConsoleOutput(`Submission Successful: ${response.data.message}`)
       } else {
         setConsoleOutput(`${response.data.message || 'Failed'}\n${response.data.error || ''}`)
       }
@@ -980,7 +980,7 @@ function App() {
                             <div style={{marginBottom: '10px'}}>
                               <strong style={{fontSize: '1.1rem'}}>{appr.teamName}</strong> submitted <span style={{color: 'gold'}}>{QUESTIONS[appr.questionId]?.title || appr.questionId}</span>
                               <div style={{fontSize: '0.85rem', color: '#aaa', marginTop: '4px'}}>
-                                Submitted: {appr.submissionTime ? new Date(appr.submissionTime).toLocaleString() : 'Unknown time'}
+                                Submitted: {appr.submissionTime ? new Date(appr.submissionTime).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'Unknown time'}
                               </div>
                             </div>
                             <textarea
@@ -1089,7 +1089,7 @@ function App() {
                                 <strong>{entry.teamName}</strong>
                                 <span>{QUESTIONS[entry.questionId]?.title || entry.questionId}</span>
                                 <span style={{ color: '#aaa' }}>
-                                  {entry.completionTime ? new Date(entry.completionTime).toLocaleString() : 'N/A'}
+                                  {entry.completionTime ? new Date(entry.completionTime).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'N/A'}
                                 </span>
                               </div>
                             </div>

@@ -377,71 +377,21 @@ app.post('/api/submit', async (req, res) => {
       });
     }
 
-    // 🌟 Automatic Validation 🌟
-    const gbResult = await executeWithGodbolt(submittedCode, question.testInput);
-    
-    if (gbResult.compilerErrorStr) {
-      return res.json({ 
-        success: false, 
-        message: "Compilation Error", 
-        error: gbResult.compilerErrorStr 
-      });
-    }
+    // 🎉 Create Pending Approval - Admin will review physically
+    await teamRef.set({
+      pendingApproval: {
+        questionId: questionId,
+        code: submittedCode,
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      }
+    }, { merge: true });
 
-    if (gbResult.actualOutput === null) {
-      return res.json({ 
-        success: false, 
-        message: "Execution Failed", 
-        error: "The compiler did not return any output. Check your code for infinite loops or crashes." 
-      });
-    }
+    io.emit('new_approval_request', { teamName, questionId });
 
-    const actual = gbResult.actualOutput.trim().replace(/\r\n/g, '\n');
-    const expected = question.expectedOutput.trim().replace(/\r\n/g, '\n');
-
-    if (actual === expected) {
-      // 🎉 Bug Fixed!
-      await teamRef.set({
-        score: admin.firestore.FieldValue.increment(question.points),
-        solvedQuestions: admin.firestore.FieldValue.arrayUnion(questionId),
-        lastFixed: admin.firestore.FieldValue.serverTimestamp(),
-        pendingApproval: admin.firestore.FieldValue.delete() // Clear if any
-      }, { merge: true });
-
-      io.emit('score_updated', { 
-        teamName, 
-        points: question.points, 
-        message: `Team ${teamName} fixed ${questionId}!` 
-      });
-
-      // Broadcast leaderboard update
-      const teamsSnapshot = await db.collection('teams').get();
-      const leaderboard = [];
-      teamsSnapshot.forEach(doc => {
-        const data = doc.data();
-        if (data.hasLoggedIn) {
-          leaderboard.push({
-            name: doc.id,
-            score: data.score || 0,
-            solved: (data.solvedQuestions && data.solvedQuestions.length) || 0,
-            lastFixed: data.lastFixed ? data.lastFixed.toDate() : new Date(0)
-          });
-        }
-      });
-      leaderboard.sort((a, b) => b.score - a.score || a.lastFixed - b.lastFixed);
-      io.emit('leaderboard_update', { leaderboard: leaderboard.slice(0, 50) });
-
-      return res.json({ 
-        success: true, 
-        message: `Bug Fixed! You earned ${question.points} points.` 
-      });
-    } else {
-      return res.json({ 
-        success: false, 
-        message: "Incorrect Output", 
-        error: `Unexpected output. Your code didn't produce the correct result for input '${question.testInput}'.` 
-      });
-    }
+    return res.json({ 
+      success: true, 
+      message: `Submission received! Waiting for admin review...\nAdmin will verify your fix and update the leaderboard.` 
+    });
 
   } catch (error) {
     console.error("Submit Error:", error);
