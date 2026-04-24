@@ -405,8 +405,8 @@ app.post('/api/submit', async (req, res) => {
 
     const expectedOutput = question.expectedOutput.trim();
 
-    const cleanOut = actualOutput ? actualOutput.replace(/\s+/g, '') : '';
-    const cleanExp = expectedOutput ? expectedOutput.replace(/\s+/g, '') : '';
+    const cleanOut = actualOutput ? actualOutput.replace(/\s+/g, '').replace(/[^\x20-\x7E]/g, '') : '';
+    const cleanExp = expectedOutput ? expectedOutput.replace(/\s+/g, '').replace(/[^\x20-\x7E]/g, '') : '';
 
     if (cleanOut === cleanExp) {
       // 🎉 Create Pending Approval instead of Auto-Updating Database

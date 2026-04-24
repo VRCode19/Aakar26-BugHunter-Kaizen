@@ -37,25 +37,6 @@ Debug task:
 Check the inner loop condition carefully. The pattern is missing one value in each row.`,
     starterCode: `#include <stdio.h>
 
-/*
-Instruction:
-This program is intentionally buggy.
-Find and fix the bug so it prints the correct number pattern.
-
-Input:
-One positive integer n.
-
-Expected output for n = 5:
-1
-12
-123
-1234
-12345
-
-Debug task:
-Check the inner loop condition carefully. The pattern is missing one value in each row.
-*/
-
 int main(void) {
     int n, i, j;
 
@@ -89,23 +70,6 @@ Debug task:
 The swap function uses pointers, but values are not changing in main.
 Check whether pointer addresses are being swapped or actual values are being swapped.`,
     starterCode: `#include <stdio.h>
-
-/*
-Instruction:
-This program is intentionally buggy.
-Find and fix the bug so it correctly swaps two numbers using pointers.
-
-Input:
-Two integers a and b.
-
-Expected output for input: 10 20
-Before swap: a = 10, b = 20
-After swap: a = 20, b = 10
-
-Debug task:
-The swap function uses pointers, but values are not changing in main.
-Check whether pointer addresses are being swapped or actual values are being swapped.
-*/
 
 void swap(int *a, int *b) {
     int *temp = a;
@@ -148,28 +112,6 @@ O -> 79
 Debug task:
 The conversion logic is wrong. Check the ASCII operation used for lowercase letters.`,
     starterCode: `#include <stdio.h>
-
-/*
-Instruction:
-This program is intentionally buggy.
-Find and fix the bug so it converts a lowercase string to uppercase using ASCII values.
-Then print each character with its ASCII value.
-
-Input:
-A single lowercase word (no spaces), for example: hello
-
-Expected output for input: hello
-Uppercase: HELLO
-ASCII values:
-H -> 72
-E -> 69
-L -> 76
-L -> 76
-O -> 79
-
-Debug task:
-The conversion logic is wrong. Check the ASCII operation used for lowercase letters.
-*/
 
 int main(void) {
     char s[100];
@@ -214,25 +156,6 @@ Debug task:
 2) The hex output line uses the wrong format specifier.`,
     starterCode: `#include <stdio.h>
 
-/*
-Instruction:
-This program is intentionally buggy.
-Find and fix the bug so it correctly uses bitwise operators and format specifiers.
-
-Input:
-One integer n.
-
-Expected output for input: 10
-n & 1 = 0
-n << 1 = 20
-n >> 1 = 5
-Hex of n = 0xA
-
-Debug task:
-1) One expression uses a logical operator instead of a bitwise operator.
-2) The hex output line uses the wrong format specifier.
-*/
-
 int main(void) {
     int n;
 
@@ -270,26 +193,6 @@ Debug task:
 2) Check the format specifier used to print marks.`,
     starterCode: `#include <stdio.h>
 
-/*
-Instruction:
-This program is intentionally buggy.
-Find and fix the bug so it correctly uses typedef with a structure and prints student data.
-
-Input:
-One student record in this format:
-roll name marks
-Example: 101 Ravi 88.5
-
-Expected output for input: 101 Ravi 88.5
-Roll: 101
-Name: Ravi
-Marks: 88.50
-
-Debug task:
-1) Check whether typedef name and structure usage match.
-2) Check the format specifier used to print marks.
-*/
-
 typedef struct {
     int roll;
     char name[50];
@@ -326,22 +229,6 @@ Debug task:
 2) Make sure the base case works correctly.`,
     starterCode: `#include <stdio.h>
 
-/*
-Instruction:
-This program is intentionally buggy.
-Find and fix the bug so it correctly calculates factorial using recursion.
-
-Input:
-One non-negative integer n.
-
-Expected output for input: 5
-Factorial of 5 is 120
-
-Debug task:
-1) Check the recursive step carefully.
-2) Make sure the base case works correctly.
-*/
-
 int factorial(int n) {
     return n + factorial(n - 1);
 }
@@ -375,23 +262,6 @@ The selection logic is wrong for ascending order.
 Check the comparison used while finding the minimum character.`,
     starterCode: `#include <stdio.h>
 #include <string.h>
-
-/*
-Instruction:
-This program is intentionally buggy.
-Find and fix the bug so it sorts characters of a string in ascending order
-using selection sort.
-
-Input:
-A single word (no spaces), for example: dcba
-
-Expected output for input: dcba
-Sorted string: abcd
-
-Debug task:
-The selection logic is wrong for ascending order.
-Check the comparison used while finding the minimum character.
-*/
 
 int main(void) {
     char s[100];
@@ -440,24 +310,6 @@ Debug task:
 3) Keep proper C boilerplate structure.`,
     starterCode: `#include <stdio.h>
 
-/*
-Instruction:
-This program is intentionally buggy.
-Find and fix the boilerplate and printf/scanf issues.
-
-Input:
-One integer number.
-
-Expected output for input: 25
-You entered: 25
-Square: 625
-
-Debug task:
-1) Check scanf usage.
-2) Check printf format specifiers.
-3) Keep proper C boilerplate structure.
-*/
-
 int main(void) {
     int n;
 
@@ -491,26 +343,6 @@ Debug task:
 2) Check the if-else condition for even/odd.`,
     starterCode: `#include <stdio.h>
 
-/*
-Instruction:
-This program is intentionally buggy.
-Find and fix the if-else and loop issues.
-
-Input:
-One positive integer n.
-
-Expected output for input: 5
-1 is Odd
-2 is Even
-3 is Odd
-4 is Even
-5 is Odd
-
-Debug task:
-1) Check the loop range.
-2) Check the if-else condition for even/odd.
-*/
-
 int main(void) {
     int n, i;
 
@@ -543,25 +375,7 @@ Value read from file: 42
 Debug task:
 1) Check the file open mode used for writing.
 2) Ensure data is written correctly before reading.`,
-    starterCode: `#include <stdio.h>
-
-/*
-Instruction:
-This program is intentionally buggy.
-Find and fix the bug so it writes a number to a file and reads it back.
-
-Input:
-One integer n.
-
-Expected output for input: 42
-Value read from file: 42
-
-Debug task:
-1) Check the file open mode used for writing.
-2) Ensure data is written correctly before reading.
-*/
-
-int main(void) {
+    starterCode: `#include <stdio.h>\n\nint main(void) {
     int n, value;
     FILE *fp;
 
