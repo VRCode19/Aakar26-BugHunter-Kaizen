@@ -26,13 +26,6 @@ Find and fix the bug so it prints the correct number pattern.
 Input:
 One positive integer n.
 
-Expected output for n = 5:
-1
-12
-123
-1234
-12345
-
 Debug task:
 Check the inner loop condition carefully. The pattern is missing one value in each row.`,
     starterCode: `#include <stdio.h>
@@ -61,10 +54,6 @@ Find and fix the bug so it correctly swaps two numbers using pointers.
 
 Input:
 Two integers a and b.
-
-Expected output for input: 10 20
-Before swap: a = 10, b = 20
-After swap: a = 20, b = 10
 
 Debug task:
 The swap function uses pointers, but values are not changing in main.
@@ -99,15 +88,6 @@ Then print each character with its ASCII value.
 
 Input:
 A single lowercase word (no spaces), for example: hello
-
-Expected output for input: hello
-Uppercase: HELLO
-ASCII values:
-H -> 72
-E -> 69
-L -> 76
-L -> 76
-O -> 79
 
 Debug task:
 The conversion logic is wrong. Check the ASCII operation used for lowercase letters.`,
@@ -145,12 +125,6 @@ Find and fix the bug so it correctly uses bitwise operators and format specifier
 Input:
 One integer n.
 
-Expected output for input: 10
-n & 1 = 0
-n << 1 = 20
-n >> 1 = 5
-Hex of n = 0xA
-
 Debug task:
 1) One expression uses a logical operator instead of a bitwise operator.
 2) The hex output line uses the wrong format specifier.`,
@@ -182,11 +156,6 @@ Input:
 One student record in this format:
 roll name marks
 Example: 101 Ravi 88.5
-
-Expected output for input: 101 Ravi 88.5
-Roll: 101
-Name: Ravi
-Marks: 88.50
 
 Debug task:
 1) Check whether typedef name and structure usage match.
@@ -221,9 +190,6 @@ Find and fix the bug so it correctly calculates factorial using recursion.
 Input:
 One non-negative integer n.
 
-Expected output for input: 5
-Factorial of 5 is 120
-
 Debug task:
 1) Check the recursive step carefully.
 2) Make sure the base case works correctly.`,
@@ -253,9 +219,6 @@ using selection sort.
 
 Input:
 A single word (no spaces), for example: dcba
-
-Expected output for input: dcba
-Sorted string: abcd
 
 Debug task:
 The selection logic is wrong for ascending order.
@@ -300,10 +263,6 @@ Find and fix the boilerplate and printf/scanf issues.
 Input:
 One integer number.
 
-Expected output for input: 25
-You entered: 25
-Square: 625
-
 Debug task:
 1) Check scanf usage.
 2) Check printf format specifiers.
@@ -330,13 +289,6 @@ Find and fix the if-else and loop issues.
 
 Input:
 One positive integer n.
-
-Expected output for input: 5
-1 is Odd
-2 is Even
-3 is Odd
-4 is Even
-5 is Odd
 
 Debug task:
 1) Check the loop range.
@@ -368,9 +320,6 @@ Find and fix the bug so it writes a number to a file and reads it back.
 
 Input:
 One integer n.
-
-Expected output for input: 42
-Value read from file: 42
 
 Debug task:
 1) Check the file open mode used for writing.
@@ -485,6 +434,7 @@ function App() {
 
     newSocket.on('score_updated', (data) => {
       fetchLeaderboard()
+      fetchSubmissionHistory()
       if (data && data.message) {
         setSystemWarning(data.message)
       }
@@ -758,6 +708,7 @@ function App() {
         teamName, questionId, action
       })
       fetchApprovals()
+      fetchSubmissionHistory()
     } catch (error) {
       console.error('Error approving:', error)
     }
@@ -1075,55 +1026,78 @@ function App() {
                 </section>
 
                 {session.role === 'admin' && (
-                  <section className="panel admin-panel">
-                    <div className="section-title" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                      <span>Admin Monitor</span>
-                      <button type="button" className="ghost-btn danger-btn" onClick={() => socket && socket.emit('end_event')} style={{padding: '6px 12px', fontSize: '0.7rem'}}>End Event</button>
-                    </div>
-                    <div className="admin-list">
-                      {leaderboard.length === 0 ? (
-                        <div className="empty-state">No teams logged in yet.</div>
-                      ) : (
-                        leaderboard.map((team) => {
-                          const tabCount = visibilityWarnings[team.id] ?? 0
-                          const fullscreenCount = fullscreenWarnings[team.id] ?? 0
-                          const removed = disqualifiedTeams.includes(team.id)
+                  <>
+                    <section className="panel admin-panel">
+                      <div className="section-title" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <span>Admin Monitor</span>
+                        <button type="button" className="ghost-btn danger-btn" onClick={() => socket && socket.emit('end_event')} style={{padding: '6px 12px', fontSize: '0.7rem'}}>End Event</button>
+                      </div>
+                      <div className="admin-list">
+                        {leaderboard.length === 0 ? (
+                          <div className="empty-state">No teams logged in yet.</div>
+                        ) : (
+                          leaderboard.map((team) => {
+                            const tabCount = visibilityWarnings[team.id] ?? 0
+                            const fullscreenCount = fullscreenWarnings[team.id] ?? 0
+                            const removed = disqualifiedTeams.includes(team.id)
 
-                          return (
-                            <div key={team.id} className="admin-row">
-                              <div className="admin-row-main">
-                                <strong>{team.name}</strong>
-                                <span>Problem: {team.solved + 1}</span>
-                                <span>Tab: {tabCount}</span>
-                                <span>Fullscreen: {fullscreenCount}</span>
-                                <span>Status: {removed ? 'Disqualified' : 'Active'}</span>
+                            return (
+                              <div key={team.id} className="admin-row">
+                                <div className="admin-row-main">
+                                  <strong>{team.name}</strong>
+                                  <span>Problem: {team.solved + 1}</span>
+                                  <span>Tab: {tabCount}</span>
+                                  <span>Fullscreen: {fullscreenCount}</span>
+                                  <span>Status: {removed ? 'Disqualified' : 'Active'}</span>
+                                </div>
+
+                                <div className="admin-actions">
+                                  {removed ? (
+                                    <button
+                                      type="button"
+                                      className="ghost-btn"
+                                      onClick={() => handleRestore(team.id)}
+                                    >
+                                      Restore
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="ghost-btn danger-btn"
+                                      onClick={() => handleDisqualify(team.id)}
+                                    >
+                                      Disqualify
+                                    </button>
+                                  )}
+                                </div>
                               </div>
+                            )
+                          })
+                        )}
+                      </div>
+                    </section>
 
-                              <div className="admin-actions">
-                                {removed ? (
-                                  <button
-                                    type="button"
-                                    className="ghost-btn"
-                                    onClick={() => handleRestore(team.id)}
-                                  >
-                                    Restore
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="ghost-btn danger-btn"
-                                    onClick={() => handleDisqualify(team.id)}
-                                  >
-                                    Disqualify
-                                  </button>
-                                )}
+                    <section className="panel admin-panel" style={{ marginTop: '20px' }}>
+                      <div className="section-title">Submission History (Approved)</div>
+                      <div className="admin-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                        {submissionHistory.length === 0 ? (
+                          <div className="empty-state">No approved submissions yet.</div>
+                        ) : (
+                          submissionHistory.map((entry, idx) => (
+                            <div key={idx} className="admin-row" style={{ fontSize: '0.85rem' }}>
+                              <div className="admin-row-main">
+                                <strong>{entry.teamName}</strong>
+                                <span>{QUESTIONS[entry.questionId]?.title || entry.questionId}</span>
+                                <span style={{ color: '#aaa' }}>
+                                  {entry.completionTime ? new Date(entry.completionTime).toLocaleString() : 'N/A'}
+                                </span>
                               </div>
                             </div>
-                          )
-                        })
-                      )}
-                    </div>
-                  </section>
+                          ))
+                        )}
+                      </div>
+                    </section>
+                  </>
                 )}
               </div>
             </div>
