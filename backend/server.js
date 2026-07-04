@@ -259,29 +259,27 @@ app.get('/', (req, res) => {
 
 // AUTO-REGISTER & LOGIN ROUTE
 app.post('/api/login', async (req, res) => {
-  const { teamName, password } = req.body;
+  const { teamName, password: _password } = req.body;
 
-  if (!teamName || !password) {
-    return res.status(400).json({ success: false, message: "Missing team name or password" });
+  if (!teamName || typeof teamName !== 'string') {
+    return res.status(400).json({ success: false, message: "Missing team name" });
   }
 
-  if (password !== 'Kaizen2026') {
-    return res.status(401).json({ success: false, message: "Incorrect password!" });
+  const normalizedTeamName = teamName.trim();
+  if (!normalizedTeamName) {
+    return res.status(400).json({ success: false, message: "Missing team name" });
   }
 
-  // Optional: Sanitize team name (prevent super long names from breaking your UI)
-  if (teamName.length > 20) {
+  if (normalizedTeamName.length > 20) {
     return res.status(400).json({ success: false, message: "Team name is too long! Keep it under 20 characters." });
   }
 
   try {
-    const teamRef = db.collection('teams').doc(teamName);
-    let teamData = teamsCache[teamName];
+    const teamRef = db.collection('teams').doc(normalizedTeamName);
+    let teamData = teamsCache[normalizedTeamName];
 
     if (!teamData) {
-      // 🌟 NEW TEAM REGISTRATION 🌟
       const newTeamData = {
-        password: password,
         score: 0,
         bugsFixed: 0,
         hasLoggedIn: true,
@@ -289,14 +287,12 @@ app.post('/api/login', async (req, res) => {
         lastFixed: admin.firestore.FieldValue.serverTimestamp()
       };
 
-      // Save to Firebase & Cache
       await teamRef.set(newTeamData);
-      teamsCache[teamName] = { ...newTeamData };
+      teamsCache[normalizedTeamName] = { ...newTeamData };
 
-      // Update Leaderboard Cache
-      if (!leaderboardCache.find(t => t.name === teamName)) {
+      if (!leaderboardCache.find(t => t.name === normalizedTeamName)) {
         leaderboardCache.push({
-          name: teamName,
+          name: normalizedTeamName,
           score: 0,
           bugsFixed: 0,
           solved: 0,
@@ -305,58 +301,42 @@ app.post('/api/login', async (req, res) => {
         leaderboardCache.sort((a, b) => b.bugsFixed - a.bugsFixed || a.lastFixed - b.lastFixed);
       }
 
-      // Broadcast to the Leaderboard
-      io.emit('team_joined', { teamName: teamName, score: 0 });
+      io.emit('team_joined', { teamName: normalizedTeamName, score: 0 });
 
-      delete newTeamData.password;
       return res.json({
         success: true,
         message: "New team registered and logged in!",
-        team: { name: teamName, ...newTeamData }
+        team: { name: normalizedTeamName, ...newTeamData }
       });
-
-    } else {
-      // 🔄 EXISTING TEAM LOGIN 🔄
-      if (teamData.password === password) {
-        // Correct password
-        const updateData = { hasLoggedIn: true };
-        if (!teamData.lastFixed) {
-          updateData.lastFixed = admin.firestore.FieldValue.serverTimestamp();
-        }
-        await teamRef.set(updateData, { merge: true });
-        
-        // Update Cache
-        teamsCache[teamName].hasLoggedIn = true;
-        if (updateData.lastFixed) teamsCache[teamName].lastFixed = new Date();
-
-        // Update Leaderboard Cache if missing (e.g. joined after server start)
-        if (!leaderboardCache.find(t => t.name === teamName)) {
-          leaderboardCache.push({
-            name: teamName,
-            score: teamData.score || 0,
-            bugsFixed: teamData.bugsFixed || 0,
-            solved: (teamData.solvedQuestions && teamData.solvedQuestions.length) || 0,
-            lastFixed: teamData.lastFixed ? (teamData.lastFixed.toDate ? teamData.lastFixed.toDate() : teamData.lastFixed) : new Date()
-          });
-          leaderboardCache.sort((a, b) => b.bugsFixed - a.bugsFixed || a.lastFixed - b.lastFixed);
-        }
-
-        io.emit('team_joined', { teamName: teamName, score: teamData.score || 0 });
-
-        delete teamData.password;
-        return res.json({
-          success: true,
-          message: "Welcome back!",
-          team: { name: teamName, ...teamData }
-        });
-      } else {
-        // Wrong password
-        return res.status(401).json({
-          success: false,
-          message: "Team name already taken, or incorrect password!"
-        });
-      }
     }
+
+    const updateData = { hasLoggedIn: true };
+    if (!teamData.lastFixed) {
+      updateData.lastFixed = admin.firestore.FieldValue.serverTimestamp();
+    }
+    await teamRef.set(updateData, { merge: true });
+
+    teamsCache[normalizedTeamName].hasLoggedIn = true;
+    if (updateData.lastFixed) teamsCache[normalizedTeamName].lastFixed = new Date();
+
+    if (!leaderboardCache.find(t => t.name === normalizedTeamName)) {
+      leaderboardCache.push({
+        name: normalizedTeamName,
+        score: teamData.score || 0,
+        bugsFixed: teamData.bugsFixed || 0,
+        solved: (teamData.solvedQuestions && teamData.solvedQuestions.length) || 0,
+        lastFixed: teamData.lastFixed ? (teamData.lastFixed.toDate ? teamData.lastFixed.toDate() : teamData.lastFixed) : new Date()
+      });
+      leaderboardCache.sort((a, b) => b.bugsFixed - a.bugsFixed || a.lastFixed - b.lastFixed);
+    }
+
+    io.emit('team_joined', { teamName: normalizedTeamName, score: teamData.score || 0 });
+
+    return res.json({
+      success: true,
+      message: "Welcome back!",
+      team: { name: normalizedTeamName, ...teamData }
+    });
   } catch (error) {
     console.error("Login Error:", error);
     res.status(500).json({ success: false, message: "Server error during login" });
@@ -577,7 +557,6 @@ io.on('connection', (socket) => {
   // 🚨 ANTI-CHEAT: Penalty for switching tabs
   socket.on('tab_switch_violation', async (data) => {
     if (!data || !data.teamName) return;
-    if (data.teamName === 'bughunter2026') return; // EXEMPT ADMIN
 
     console.log(`🚨 CHEATING DETECTED: ${data.teamName} tabbed out!`);
 

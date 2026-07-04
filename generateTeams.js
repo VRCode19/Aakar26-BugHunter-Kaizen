@@ -1,14 +1,12 @@
 const admin = require('firebase-admin');
 
-// 1. Connect to your Firebase keys
-const serviceAccount = require('./backend/firebaseServiceAccount.json'); 
+const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT) : require('./backend/firebaseServiceAccount.json');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 
 const db = admin.firestore();
-const SHARED_PASSWORD = "kaizen2026"; // Change this to your event password!
 const TOTAL_TEAMS = 50;
 
 async function buildArena() {
@@ -25,7 +23,6 @@ async function buildArena() {
     const teamRef = db.collection('teams').doc(teamName);
     
     batch.set(teamRef, {
-      password: SHARED_PASSWORD,
       score: 0,
       hasLoggedIn: false,
       solvedQuestions: []
@@ -34,7 +31,7 @@ async function buildArena() {
 
   try {
     await batch.commit();
-    console.log(`✅ Success! All ${TOTAL_TEAMS} teams created with password: "${SHARED_PASSWORD}"`);
+    console.log(`✅ Success! All ${TOTAL_TEAMS} teams created for public demo access.`);
     process.exit(0); // Closes the script
   } catch (error) {
     console.error("❌ Error creating teams:", error);

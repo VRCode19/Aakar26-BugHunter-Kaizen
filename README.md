@@ -1,115 +1,60 @@
 # BugHunter 2026
 
-BugHunter 2026 is a real time competition platform designed for debugging challenges. It allows participants to register as teams, solve C language debugging problems, and compete on a live leaderboard. The system features an admin approval workflow and anti cheat mechanisms to ensure fair play.
+BugHunter 2026 is a college debugging contest platform for Aakar26. It is a full-stack web app for a C debugging competition. The repository contains a Node.js backend for game logic, Firebase-backed persistence, and code execution, plus a React/Vite frontend for the participant and admin experience.
 
-## Project Architecture
+## Repository structure
 
-The project is divided into two main components:
+- backend/: Express server, Firebase integration, Socket.io real-time events, and API routes for login, running code, submissions, and approvals.
+- frontend/: Vite + React app with the competition UI, login screens, editor, leaderboard, and admin review flows.
+- generateTeams.js: helper script for creating team records in Firestore.
+- render.yaml and vercel.json: deployment configuration files.
 
-1. Backend: A Node.js Express server that manages data persistence, real time communication, and code execution.
-2. Frontend: A React application built with Vite that provides a dynamic interface for participants and administrators.
+## Main features
 
-## Technical Stack
+- Team login and automatic team registration
+- C debugging challenge flow with code editing and execution
+- Run and submit actions for each question
+- Live leaderboard and approval workflow for submissions
+- Real-time updates over Socket.io
 
-### Backend Technologies
+## Tech stack
 
-* Node.js and Express for server logic
-* Socket.io for real time bidirectional communication
-* Firebase Firestore for data storage and management
-* Godbolt API for secure C code compilation and execution
-* Express Rate Limit for submission throttling
+### Backend
+- Node.js
+- Express
+- Socket.io
+- Firebase Admin SDK / Firestore
+- Axios
+- dotenv
 
-### Frontend Technologies
+### Frontend
+- React
+- Vite
+- Axios
+- Socket.io client
 
-* React for component based UI
-* Vite for fast development and building
-* Socket.io Client for real time updates
-* Axios for API requests
-* Vanilla CSS for custom styling
+## Getting started
 
-## Core Features
+### 1. Backend
 
-### Team Management
+1. Change into the backend folder.
+2. Install dependencies:
+   - npm install
+3. Start the server:
+   - npm start
 
-* Automatic registration upon first login
-* Password protected access using a shared event key
-* In memory caching to optimize database read operations
+The backend expects Firebase credentials. You can provide them either through a Firebase service account JSON file named firebaseServiceAccount.json in the backend folder or through the FIREBASE_SERVICE_ACCOUNT environment variable.
 
-### Debugging Platform
+### 2. Frontend
 
-* 10 curated C language debugging questions
-* Integrated code editor and execution environment
-* Custom input support for testing solutions
-* Manual admin review system for final submissions
+1. Change into the frontend folder.
+2. Install dependencies:
+   - npm install
+3. Start the development server:
+   - npm run dev
 
-### Live Leaderboard
+## Notes
 
-* Real time ranking based on bugs fixed and submission time
-* Instant updates across all connected clients via WebSockets
-* Visual feedback for team joins and score updates
-
-### Security and Anti Cheat
-
-* Tab switching detection with automatic point penalties
-* Submission rate limiting to prevent brute force attempts
-* Server side validation of team credentials and submission states
-
-## Installation and Setup
-
-### Prerequisites
-
-* Node.js installed on the system
-* Firebase project with a service account key
-* Internet connection for Godbolt API access
-
-### Backend Configuration
-
-1. Navigate to the backend directory
-2. Install dependencies using: npm install
-3. Create a .env file with the following variables:
-   * PORT=5000
-   * FIREBASE_SERVICE_ACCOUNT (Optional if using json file)
-4. Place your firebaseServiceAccount.json file in the backend root
-5. Start the server with: npm start
-
-### Frontend Configuration
-
-1. Navigate to the frontend directory
-2. Install dependencies using: npm install
-3. Configure the backend URL in the application source code
-4. Start the development server with: npm run dev
-5. Build for production using: npm run build
-
-## API Endpoints
-
-### Public Routes
-
-* GET /: Health check endpoint
-* POST /api/login: Handles team registration and authentication
-* GET /api/leaderboard: Retrieves current rankings
-
-### Submission Routes
-
-* POST /api/run: Compiles and executes code via Godbolt
-* POST /api/submit: Registers a submission for admin review
-
-### Admin Routes
-
-* GET /api/approvals: Lists all pending submission requests
-* GET /api/submission history: Returns a log of all solved questions
-* POST /api/approve: Accepts or rejects a pending submission
-
-## Real Time Events
-
-The system utilizes Socket.io for the following events:
-
-* team_joined: Broadcasts when a new team enters the competition
-* score_updated: Notifies clients of point changes or penalties
-* leaderboard_update: Syncs the ranking list across all screens
-* new_approval_request: Alerts admins of incoming submissions
-* approval_status: Informs teams if their fix was accepted or rejected
-* event_ended: Signals the conclusion of the competition
-
-## License
-
-This project is developed for internal competition use. All rights reserved.
+- The backend uses the Godbolt compiler API to execute submitted C code.
+- The project includes deployment configuration for Render and Vercel.
+- The helper script in the repository root can be used to create starter team documents for the competition data store.

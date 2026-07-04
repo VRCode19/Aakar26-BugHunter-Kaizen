@@ -8,7 +8,6 @@ admin.initializeApp({
 });
 
 const db = admin.firestore();
-const SHARED_PASSWORD = "kaizen2026"; // Change this to your event password!
 const TOTAL_TEAMS = 50;
 
 async function buildArena() {
@@ -25,7 +24,6 @@ async function buildArena() {
     const teamRef = db.collection('teams').doc(teamName);
     
     batch.set(teamRef, {
-      password: SHARED_PASSWORD,
       score: 0,
       hasLoggedIn: false,
       solvedQuestions: []
@@ -34,7 +32,7 @@ async function buildArena() {
 
   try {
     await batch.commit();
-    console.log(`✅ Success! All ${TOTAL_TEAMS} teams created with password: "${SHARED_PASSWORD}"`);
+    console.log(`✅ Success! All ${TOTAL_TEAMS} teams created for public demo access.`);
     process.exit(0); // Closes the script
   } catch (error) {
     console.error("❌ Error creating teams:", error);

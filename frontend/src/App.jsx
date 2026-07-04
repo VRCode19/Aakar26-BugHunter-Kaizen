@@ -588,19 +588,15 @@ function App() {
   }, [leaderboard, disqualifiedTeams])
 
   const handleTeamLogin = async () => {
-    if (!teamId.trim() || !teamPassword.trim()) {
-      setLoginErr('! Enter Team ID and Password.')
-      return
-    }
-
-    const normalizedId = teamId.trim()
+    const normalizedId = teamId.trim() || 'Guest Team'
+    const normalizedPassword = teamPassword.trim() || 'public-demo'
     setButtonText('... Connecting')
     setLoginErr('')
 
     try {
       const response = await axios.post(`${BACKEND_URL}/api/login`, {
         teamName: normalizedId,
-        password: teamPassword
+        password: normalizedPassword
       })
 
       if (response.data.success) {
@@ -619,17 +615,15 @@ function App() {
   }
 
   const handleAdminLogin = () => {
-    if (adminId.trim() !== 'bughunter2026' || adminPassword.trim() !== 'vrishab&pratham') {
-      setLoginErr('! Incorrect Admin ID or Password.')
-      return
-    }
+    const normalizedId = adminId.trim() || 'Public Admin'
+    const normalizedPassword = adminPassword.trim() || 'public-demo'
 
     setLoginErr('')
     setButtonText('... Connecting')
 
     setTimeout(() => {
       setSession({
-        id: adminId.trim(),
+        id: normalizedId,
         role: 'admin',
       })
       setButtonText('> Activate Sharingan')
